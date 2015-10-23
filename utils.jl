@@ -16,16 +16,25 @@ end
 function DensityDistribution(n, f::Function, insupport::Function=((x)->true))
   # TODO: determine number of arguments
   n <= 1 ? 
-    UnivariateDensityDistribution  (f, insupport) : 
+    UnivariateDensityDistribution(f, insupport) : 
     MultivariateDensityDistribution(f, n, insupport)
 end
 
-logpdf   (d::UnivariateDensityDistribution, x)   = log(d.pdf(x))
-_logpdf  (d::MultivariateDensityDistribution, x) = log(d.pdf(x))
-insupport(d::UnivariateDensityDistribution, x)   = d.insupport(x)
-insupport(d::MultivariateDensityDistribution, x) = d.insupport(x)
-length   (d::UnivariateDensityDistribution)      = 1
-length   (d::MultivariateDensityDistribution)    = d.dim
+logpdf(d::UnivariateDensityDistribution, x::Real)        = log(d.pdf(x))
+_logpdf(d::MultivariateDensityDistribution, x::Vector)   = log(d.pdf(x))
+insupport(d::UnivariateDensityDistribution, x::Real)     = d.insupport(x)
+insupport(d::MultivariateDensityDistribution, x::Vector) = d.insupport(x)
+length(d::UnivariateDensityDistribution)   = 1
+length(d::MultivariateDensityDistribution) = d.dim
+
+""" Given samplings (of the same size), concatenate them to form their mean sampling """ 
+function mean(chains::Vector{Mamba.ModelChains}) 
+  for i = 1:length(chains)-1
+    size(chains[i], 1) == size(chains[i+1], 1) ||
+      warn("concatenated chains have not same length")
+  end
+  Chains(cat(1, [c.value for c in chains]...))
+end
 
 
 """ Wrapper to the LIMEX solver for the GynC model 

@@ -12,22 +12,13 @@ yi=y[1]
 
 """ Given jumpheights of different persons, return samples of the estimated prior (mean of the posteriors). """
 function priorestimation(y::Vector)
-  cc = []
-  for yi in y
-    c = posterior(yi)
-    if cc == []
-      cc = c
-    else
-      cc.value = cat(1, cc.value, c.value)
-    end
-  end
-  cc
+  mean([posterior(yi) for yi in y])
 end
 
 """ Given some measured y value, sample the posterior distribution. """
 function posterior(y::Real; iters=1000)
   m = Model(
-    x = Stochastic(()->DensityDistribution(x->rho(y-h(x)))))
+    x = Stochastic(()->DensityDistribution(1, x->rho(y-h(x)))))
 
   setsamplers!(m, [Slice([:x],[100.0])])
   data =  Dict{Symbol,Any}()
