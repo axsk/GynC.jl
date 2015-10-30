@@ -2,16 +2,10 @@ using MAT, DataFrames
 
 include("utils.jl")
 
-type PatientData
-  time::Vector
-  data::Array # (4,length(time))
-end
-
-# indices for latent variables
-const LH  = 2
-const FSH = 7
-const E2  = 24
-const P4  = 25
+# indices for measured variables: LH, FSH, E2, P4
+MEASURED = [2,7,24,25]
+# indices for the parameters to be sampled
+SAMPLEPARMS = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 59, 65, 95, 98, 101, 103]
 
 """ load the patient data and return a vector of Arrays, each of shape 4x31 denoting the respective concentration or NaN if not available """
 function loadpfizer(path = "data/pfizer_normal.txt")
@@ -46,18 +40,18 @@ function test_gync()
   @time y = gync(y0, tspan, parms)
   
   plot(
-    melt(DataFrame(vcat(tspan', y[[2,7,24,25],:])'), :x1),
+    melt(DataFrame(vcat(tspan', y[MEASURED],:])'), :x1),
     x = :x1, y = :value, color = :variable, Geom.line)
 end
 
-""" likelihood (up to proport.) for the latent parameters given the patientdata """
+""" likelihood (up to proport.) for the parameters given the patientdata """
 function loglikelihood(parms, data, y0)
   sigma = 1
   tspan = Array{Float64}(collect(1:31)) 
   y = gync(y0, tspan, parms)
   
   distsq = 0
-  simdata = y[[LH,FSH,E2,P4],:]
+  simdata = y[MEASURED,:]
   
   sre = minimum([squaredrelativeerror(data, translatecol(simdata, transl)) for transl in 0:30])
   -1/(2*sigma^2) * sre
@@ -85,7 +79,7 @@ function patientmodel(data::PatientData, allparms::Vector, y0)
         parms->loglikelihood(mergepams!(parms, allparms), data, y0))))
 end
 
-function mergeparms!(latent::Vector, fixed::Vector)
-  fixed[[LH, FSH, E2, P4]] = latent
-  fixed 
+function mergeparms!(sampled::Vector, all::Vector)
+  all[SAMPLEPARMS] = sampled
+  all
 end
