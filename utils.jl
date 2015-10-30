@@ -33,7 +33,7 @@ function gync(y0::Vector{Float64}, tspan::Vector{Float64}, Parms::Vector{Float64
      Ptr{Int64}, 
      Ptr{Int64}, 
      Ptr{Float64}),
-    y, y0, tspan, &n, &m, Parms)
+    y, copy(y0), tspan, &n, &m, Parms)
   y
 end
 
