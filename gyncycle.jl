@@ -1,4 +1,4 @@
-using MAT, DataFrames
+using DataFrames, Mamba, Gadfly, Distributions
 
 include("utils.jl")
 
@@ -9,21 +9,20 @@ const SAMPLEPARMS = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 5
 
 """ load the patient data and return a vector of Arrays, each of shape 4x31 denoting the respective concentration or NaN if not available """
 function loadpfizer(path = "data/pfizer_normal.txt")
-  data=readtable("data/pfizer_normal.txt", separator='\t')
+  data = readtable(path, separator='\t')
   results = Vector()
-  for patientdata in groupby(data, 6)
-    p=fill(NaN, 4, 31)
+  map(groupby(data, 6)) do subjdata
+    p = fill(NaN, 4, 31)
     for meas in eachrow(patientdata)
       # map days to 1-31
       day = (meas[1]+30)%31+1 
-      for i=1:4
+      for i = 1:4
         val = meas[i+1]
         p[i,day] = isa(val, Number) ? val : NaN
       end
     end
-    append!(results, Any[p])
+    p
   end
-  results
 end
 
 function loadparms()
@@ -47,12 +46,8 @@ end
 """ likelihood (up to proport.) for the parameters given the patientdata """
 function loglikelihood(data::Matrix, parms::Vector, y0::Vector, sigma_rho::Real)
   tspan = Array{Float64}(collect(1:31)) 
-  y = gync(y0, tspan, parms)
-  
-  distsq = 0
-  simdata = y[MEASURED,:]
-  
-  sre = minimum([squaredrelativeerror(data, translatecol(simdata, transl)) for transl in 0:30])
+  y = gync(y0, tspan, parms)[MEASURED,:]
+  sre = minimum([squaredrelativeerror(data, translatecol(y, transl)) for transl in 0:30])
   -1/(2*sigma_rho^2) * sre
 end
 
@@ -71,20 +66,22 @@ end
 
 """ Return the Bayesian Model with priors y0 ~ Norm(y0), parms' ~ Norm(parms'). Here parms' denotes the sampled parameters, while `parms` are all parameters. """
 function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
-  tparms = copy(parms) # copy for mutating via mergeparms!
-  sigma_y0 = diagm(y0/10)
-  sigma_parms = diagm(parms[SAMPLEPARMS]/10)
-  sigma_rho = length(SAMPLEPARMS) / 10
+  # copy for mutating via mergeparms!
+  tparms      = copy(parms)
+
+  sigma_y0    = y0 / 10
+  sigma_parms = parms[SAMPLEPARMS] / 10
+  sigma_rho   = length(SAMPLEPARMS) / 10
 
   m = Model(
     y0 = Stochastic(length(y0),
-      () -> MVNormal(y0, sigma_y0)),
+      () -> MvNormal(y0, sigma_y0)),
     sparms = Stochastic(length(SAMPLEPARMS),
-      () -> MVNormal(allparms[SAMPLEPARMS], sigma_parms)),
+      () -> MvNormal(parms[SAMPLEPARMS], sigma_parms)),
     parms = Logical(length(parms),
       (sparms) -> mergeparms!(sparms, tparms), false),
     data = Stochastic(size(data, 1),
-      (y0, parms) -> DensityDisribution(size(data,1), data->loglikelihood(data, aparms, y0, sigma_rho), log=true)))
+      (y0, parms) -> DensityDisribution(size(data,1), data->loglikelihood(data, aparms, y0, sigma_rho), log=true), false))
 
   inputs = Dict{Symbol,Any}()
   inits  = Dict{Symbol,Any}(:y0 -> y0, :parms -> parms, :data -> data)
