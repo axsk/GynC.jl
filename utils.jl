@@ -1,10 +1,9 @@
 using Distributions
-import Distributions: length, insupport, logpdf, _logpdf
+import Distributions: logpdf, minimum, maximum, length, insupport, _logpdf
 
 
 type UnivariateDensityDistribution <: ContinuousUnivariateDistribution
   pdf::Function
-  insupport::Function
 end
 
 type MultivariateDensityDistribution <: ContinuousMultivariateDistribution
@@ -13,19 +12,21 @@ type MultivariateDensityDistribution <: ContinuousMultivariateDistribution
   insupport::Function
 end
 
-function DensityDistribution(n, f::Function, insupport::Function=((x)->true))
-  # TODO: determine number of arguments
-  n <= 1 ? 
-    UnivariateDensityDistribution(f, insupport) : 
-    MultivariateDensityDistribution(f, n, insupport)
+""" Constructs a Distribution based on the given density function """
+function DensityDistribution(f::Function, insupport::Function=((x)->true))
+  dim = length(Base.uncompressed_ast(f.code).args[1])
+  dim <= 1 ? 
+    UnivariateDensityDistribution(f) : 
+    MultivariateDensityDistribution(f, dim, insupport)
 end
 
 logpdf(d::UnivariateDensityDistribution, x::Real)        = log(d.pdf(x))
+minimum(d::UnivariateDensityDistribution)                = 0
+maximum(d::UnivariateDensityDistribution)                = 200
+
 _logpdf(d::MultivariateDensityDistribution, x::Vector)   = log(d.pdf(x))
-insupport(d::UnivariateDensityDistribution, x::Real)     = d.insupport(x)
 insupport(d::MultivariateDensityDistribution, x::Vector) = d.insupport(x)
-length(d::UnivariateDensityDistribution)   = 1
-length(d::MultivariateDensityDistribution) = d.dim
+length(d::MultivariateDensityDistribution)               = d.dim
 
 """ Given samplings (of the same size), concatenate them to form their mean sampling """ 
 function mean(chains::Vector{Mamba.ModelChains}) 
