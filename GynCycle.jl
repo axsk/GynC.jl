@@ -84,7 +84,7 @@ function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
     parms = Logical(length(parms),
       (sparms) -> mergeparms!(sparms, tparms), false),
     data = Stochastic(size(data, 1),
-      (y0, parms) -> LogDensityDisribution(data->loglikelihood(data, aparms, y0, sigma_rho))))
+      (y0, parms) -> DensityDisribution(size(data,1), data->loglikelihood(data, aparms, y0, sigma_rho), log=true)))
 
   inputs = Dict{Symbol,Any}()
   inits  = Dict{Symbol,Any}(:y0 -> y0, :parms -> parms, :data -> data)
