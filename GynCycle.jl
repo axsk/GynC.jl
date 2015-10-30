@@ -74,7 +74,6 @@ end
 function translatecol(data,transl)
   hcat(data[:, 1+transl:31], data[:, 1:transl])
 end
-  
 
 
 function patientmodel(data::PatientData, allparms::Vector, y0)
