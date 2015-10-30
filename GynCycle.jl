@@ -1,4 +1,4 @@
-using MAT
+using MAT, DataFrames
 
 include("utils.jl")
 
@@ -13,18 +13,35 @@ const FSH = 7
 const E2  = 24
 const P4  = 25
 
+""" load the patient data and return a vector of Arrays, each of shape 4x31 denoting the respective concentration or NaN if not available """
 function loadpfizer(path = "data/pfizer_normal.txt")
-  data = readtable(path, separator = '\t')
-  by(data, 6) do patientdata
-    PatientData(patientdata[1], patientdata[2:5])
+  data=readtable("data/pfizer_normal.txt", separator='\t')
+  results = Vector()
+  for patientdata in groupby(data, 6)
+    p=fill(NaN, 4, 31)
+    for meas in eachrow(patientdata)
+      # map days to 1-31
+      day = (meas[1]+30)%31+1 
+      for i=1:4
+        val = meas[i+1]
+        p[i,day] = isa(val, Number) ? val : NaN
+      end
+    end
+    append!(results, Any[p])
   end
+  results
 end
 
-function test_gync()
+function loadparms()
   parmat = matread("parameters.mat")
   parms  = vec(parmat["para"])
   y0     = vec(parmat["y0_m16"])
-  
+  parms, y0
+end
+
+""" load parameters and initial data and run a cycle with gync """
+function test_gync()
+  parms, y0 = loadparms() 
   tspan = collect(1:0.1:56.0)
   @time y = gync(y0, tspan, parms)
   
@@ -34,21 +51,30 @@ function test_gync()
 end
 
 """ likelihood (up to proport.) for the latent parameters given the patientdata """
-function loglikelihood(lparms, data::PatientData, y0)
-  y = zeros(length(y0), length(data.time))
-  
-  gync(y, y0, data.time, parms)
+function loglikelihood(parms, data, y0)
+  sigma = 1
+  tspan = Array{Float64}(collect(1:31)) 
+  y = gync(y0, tspan, parms)
   
   distsq = 0
-  yobserved = y[[LH,FSH,E2,P4],:]
-
-  diff  = y-data.data 
-  rdiff = diff ./ data.data 
-
-  sre   = sum(rdiff .^ 2)
-
+  simdata = y[[LH,FSH,E2,P4],:]
+  
+  sre = minimum([squaredrelativeerror(data, translatecol(simdata, transl)) for transl in 0:30])
   -1/(2*sigma^2) * sre
 end
+
+""" componentwise squared relative difference of two matrices """
+function squaredrelativeerror(data1, data2)
+  diff = data1 - data2
+  rdiff = diff ./ data1
+  sre   = sum(rdiff[!isnan(rdiff)] .^ 2)
+end
+
+
+function translatecol(data,transl)
+  hcat(data[:, 1+transl:31], data[:, 1:transl])
+end
+  
 
 
 function patientmodel(data::PatientData, allparms::Vector, y0)
