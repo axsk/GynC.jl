@@ -76,14 +76,18 @@ function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
   sigma_rho   = length(SAMPLEPARMS) / 10
 
   m = Model(
-    y0 = Stochastic(length(y0),
+    y0 = Stochastic(
       () -> MvNormal(y0, sigma_y0)),
-    sparms = Stochastic(length(SAMPLEPARMS),
+      
+    sparms = Stochastic(
       () -> MvNormal(parms[SAMPLEPARMS], sigma_parms)),
-    parms = Logical(length(parms),
+      
+    parms = Logical(
       (sparms) -> mergeparms!(sparms, tparms), false),
-    data = Stochastic(size(data),
-      (y0, parms) -> DensityDistribution(size(data), data->loglikelihood(data, parms, y0, sigma_rho), log=true), false))
+      
+    data = Stochastic(
+      (y0, parms) -> DensityDistribution(size(data), 
+        data -> loglikelihood(data, parms, y0, sigma_rho), log=true),  false))
 
   inputs = Dict{Symbol,Any}()
   inits  = Dict{Symbol,Any}(:y0 -> y0, :parms -> parms, :data -> data)
