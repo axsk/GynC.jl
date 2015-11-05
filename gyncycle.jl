@@ -1,4 +1,4 @@
-using DataFrames, Mamba, Gadfly, Distributions
+using MAT, DataFrames, Mamba, Gadfly, Distributions
 
 include("utils.jl")
 
@@ -11,13 +11,13 @@ const SAMPLEPARMS = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 5
 function loadpfizer(path = "data/pfizer_normal.txt")
   data = readtable(path, separator='\t')
   results = Vector()
-  map(groupby(data, 6)) do subjdata
+  map(groupby(data, 6)) do subject
     p = fill(NaN, 4, 31)
-    for meas in eachrow(patientdata)
+    for measurement in eachrow(subject)
       # map days to 1-31
-      day = (meas[1]+30)%31+1 
+      day = (measurement[1]+30)%31+1
       for i = 1:4
-        val = meas[i+1]
+        val = measurement[i+1]
         p[i,day] = isa(val, Number) ? val : NaN
       end
     end
@@ -45,9 +45,11 @@ end
 
 """ likelihood (up to proport.) for the parameters given the patientdata """
 function loglikelihood(data::Matrix, parms::Vector, y0::Vector, sigma_rho::Real)
-  tspan = Array{Float64}(collect(1:31)) 
+  tspan = Array{Float64}(collect(1:31))
   y = gync(y0, tspan, parms)[MEASURED,:]
-  sre = minimum([squaredrelativeerror(data, translatecol(y, transl)) for transl in 0:30])
+  sre = minimum(
+    [squaredrelativeerror(data, translatecol(y, transl)) 
+    for transl in 0:30])
   -1/(2*sigma_rho^2) * sre
 end
 
@@ -80,8 +82,8 @@ function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
       () -> MvNormal(parms[SAMPLEPARMS], sigma_parms)),
     parms = Logical(length(parms),
       (sparms) -> mergeparms!(sparms, tparms), false),
-    data = Stochastic(size(data, 1),
-      (y0, parms) -> DensityDisribution(size(data,1), data->loglikelihood(data, aparms, y0, sigma_rho), log=true), false))
+    data = Stochastic(size(data),
+      (y0, parms) -> DensityDistribution(size(data), data->loglikelihood(data, parms, y0, sigma_rho), log=true), false))
 
   inputs = Dict{Symbol,Any}()
   inits  = Dict{Symbol,Any}(:y0 -> y0, :parms -> parms, :data -> data)
