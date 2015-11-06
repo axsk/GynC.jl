@@ -21,8 +21,9 @@ function loadpfizer(path = "data/pfizer_normal.txt")
         p[i,day] = isa(val, Number) ? val : NaN
       end
     end
-    p
+    push!(results,p)
   end
+  results
 end
 
 function loadparms()
@@ -39,7 +40,7 @@ function test_gync()
   @time y = gync(y0, tspan, parms)
   
   plot(
-    melt(DataFrame(vcat(tspan', y[MEASURED],:])'), :x1),
+    melt(DataFrame(vcat(tspan', y[MEASURED,:])'), :x1),
     x = :x1, y = :value, color = :variable, Geom.line)
 end
 
@@ -76,31 +77,32 @@ function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
   sigma_rho   = length(SAMPLEPARMS) / 10
 
   m = Model(
-    y0 = Stochastic(
+    y0 = Stochastic(1,
       () -> MvNormal(y0, sigma_y0)),
       
-    sparms = Stochastic(
+    sparms = Stochastic(1,
       () -> MvNormal(parms[SAMPLEPARMS], sigma_parms)),
       
-    parms = Logical(
+    parms = Logical(1,
       (sparms) -> mergeparms!(sparms, tparms), false),
       
-    data = Stochastic(
-      (y0, parms) -> DensityDistribution(size(data), 
+    data = Stochastic(2,
+      (y0, parms) -> DensityDistribution(size(data),
         data -> loglikelihood(data, parms, y0, sigma_rho), log=true),  false))
 
   inputs = Dict{Symbol,Any}()
-  inits  = Dict{Symbol,Any}(:y0 -> y0, :parms -> parms, :data -> data)
+  inits  = Dict{Symbol,Any}(:y0 => y0, :sparms => parms[SAMPLEPARMS], :data => data)
   m, inputs, [inits]
 end
 
-function mergeparms!(sampled::Vector, all::Vector)
+function mergeparms!(sampled, all::Vector)
   all[SAMPLEPARMS] = sampled
   all
 end
 
 function test_mcmc()
   parms, y0 = loadparms()
-  data = loadpfizer[1]
-  mcmc(gyncmodel(data, parms, y0)..., 1000)
+  data = loadpfizer()[1]
+  m, inp, ini = gyncmodel(data, parms, y0)
+  mcmc(m, inp, ini, 1000)
 end

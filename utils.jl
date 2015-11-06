@@ -1,5 +1,5 @@
 using Distributions
-import Distributions: logpdf, minimum, maximum, length, insupport, _logpdf
+import Distributions: logpdf, minimum, maximum, length, insupport, _logpdf, size
 
 
 type UnivariateDensityDistribution <: ContinuousUnivariateDistribution
@@ -10,15 +10,16 @@ end
 
 type MultivariateDensityDistribution <: ContinuousMultivariateDistribution
   lpdf::Function
-  dim::Integer
+  dim
   insupport::Function
 end
 
 """ Constructs a Distribution based on the given density function """
 DensityDistribution(pdf::Function; kwargs...) = DensityDistribution(1, pdf; kwargs...)
-function DensityDistribution(dim, pdf; log=false, insupport::Function=((x)->true), intervall=[-inf,inf])
+
+function DensityDistribution(dim, pdf::Function; log=false, insupport::Function=((x)->true), intervall=[-Inf,Inf])
   lpdf = log ? pdf : x -> log(pdf(x)) 
-  dim <= 1 ? 
+  (isa(dim, Number) && dim <= 1) ? 
     UnivariateDensityDistribution(lpdf, intervall[1], intervall[2]) : 
     MultivariateDensityDistribution(lpdf, dim, insupport)
 end
@@ -30,6 +31,7 @@ maximum(d::UnivariateDensityDistribution)                = d.max
 _logpdf(d::MultivariateDensityDistribution, x::Vector)   = d.lpdf(x)
 insupport(d::MultivariateDensityDistribution, x::Vector) = d.insupport(x)
 length(d::MultivariateDensityDistribution)               = d.dim
+size(d::MultivariateDensityDistribution)                 = d.dim
 
 """ Given samplings (of the same size), concatenate them to form their mean sampling """ 
 function mean(chains::Vector{Mamba.ModelChains}) 
