@@ -28,8 +28,9 @@ logpdf(d::UnivariateDensityDistribution, x::Real)        = d.lpdf(x)
 minimum(d::UnivariateDensityDistribution)                = d.min
 maximum(d::UnivariateDensityDistribution)                = d.max
 
-_logpdf(d::MultivariateDensityDistribution, x::Vector)   = d.lpdf(x)
-insupport(d::MultivariateDensityDistribution, x::Vector) = d.insupport(x)
+logpdf(d::MultivariateDensityDistribution, x::DenseMatrix, transform::Bool=true) = d.lpdf(x)
+#_logpdf(d::MultivariateDensityDistribution, x::DenseMatrix)   = d.lpdf(x)
+insupport(d::MultivariateDensityDistribution, x::DenseMatrix) = d.insupport(x)
 length(d::MultivariateDensityDistribution)               = d.dim
 size(d::MultivariateDensityDistribution)                 = d.dim
 

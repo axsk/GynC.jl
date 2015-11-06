@@ -51,7 +51,9 @@ function loglikelihood(data::Matrix, parms::Vector, y0::Vector, sigma_rho::Real)
   sre = minimum(
     [squaredrelativeerror(data, translatecol(y, transl)) 
     for transl in 0:30])
-  -1/(2*sigma_rho^2) * sre
+  llh = -1/(2*sigma_rho^2) * sre
+  rand()<0.01 && println("$llh   $(y0[3]) $(parms[SAMPLEPARMS][5])")
+  llh
 end
 
 """ componentwise squared relative difference of two matrices """
@@ -59,7 +61,7 @@ function squaredrelativeerror(data1::Matrix, data2::Matrix)
   diff = data1 - data2
   # TODO: divide by data1 or data2?
   rdiff = diff ./ data1
-  sre   = sumabs2(rdiff[!isnan(rdiff)])
+  sre   = sumabs2(rdiff[!isnan(rdiff)]) / length(!isnan(rdiff))
 end
 
 """ cyclic translation of the columns of `data` by `transl` to the left """
@@ -72,9 +74,9 @@ function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
   # copy for mutating via mergeparms!
   tparms      = copy(parms)
 
-  sigma_y0    = y0 / 10
-  sigma_parms = parms[SAMPLEPARMS] / 10
-  sigma_rho   = length(SAMPLEPARMS) / 10
+  sigma_y0    = 0.5 * y0
+  sigma_parms = 0.5 * parms[SAMPLEPARMS]
+  sigma_rho   = 0.5
 
   m = Model(
     y0 = Stochastic(1,
@@ -84,11 +86,11 @@ function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
       () -> MvNormal(parms[SAMPLEPARMS], sigma_parms)),
       
     parms = Logical(1,
-      (sparms) -> mergeparms!(sparms, tparms), false),
+      (sparms) -> mergeparms!(sparms, tparms)),
       
     data = Stochastic(2,
       (y0, parms) -> DensityDistribution(size(data),
-        data -> loglikelihood(data, parms, y0, sigma_rho), log=true),  false))
+        data -> loglikelihood(data, parms.value, y0.value, sigma_rho), log=true),  false))
 
   inputs = Dict{Symbol,Any}()
   inits  = Dict{Symbol,Any}(:y0 => y0, :sparms => parms[SAMPLEPARMS], :data => data)
@@ -100,9 +102,20 @@ function mergeparms!(sampled, all::Vector)
   all
 end
 
-function test_mcmc()
+
+function test_mcmc(;scheme=1, person=1, iters=10, variance=0.01, burnin=round(Int,iters/10))
   parms, y0 = loadparms()
-  data = loadpfizer()[1]
+  data = loadpfizer()[person]
+  
+  proposalvariance = diagm([y0;parms[SAMPLEPARMS]]) * variance
+
+  schemes = Dict{Any,Array{Mamba.Sampler,1}}(
+    :NUTS => [NUTS([:y0, :sparms])],
+    :AMM  => [AMM([:y0, :sparms], proposalvariance)],
+    :MALA => [MALA([:y0, :sparms], 1, proposalvariance)])
+
   m, inp, ini = gyncmodel(data, parms, y0)
-  mcmc(m, inp, ini, 1000)
+  setsamplers!(m, schemes[scheme])
+  ini[1][:sparms] = ini[1][:sparms]*0.01
+  mcmc(m, inp, ini, iters, burnin=burnin)
 end
