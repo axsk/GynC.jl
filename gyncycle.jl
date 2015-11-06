@@ -54,6 +54,7 @@ end
 function loglikelihood(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector{Float64})
   tspan = Array{Float64}(collect(1:31))
   y = gync(y0, tspan, parms)[MEASURED,:]
+  sum(isnan(y)) > 0 && return -Inf
   sre = minimum(
     [squaredrelativeerror(data, translatecol(y, transl)) 
     for transl in 0:30])
