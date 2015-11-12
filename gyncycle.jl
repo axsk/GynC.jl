@@ -117,3 +117,17 @@ function run_mcmc(;scheme=1, person=1, iters=10, variance=0.01, burnin=round(Int
   setsamplers!(m, schemes[scheme])
   mcmc(m, inp, ini, iters, burnin=burnin)
 end
+
+function continue(chains::ModelChains, iters, block=100)
+  c=Channel(1)
+  @schedule begin
+    for i=1:ceil(Int,iters/block)
+      chains = @fetch mcmc(chains, min(iters - (i-1)*block, block))
+      isopen || break
+      isready(c) && take!(c)
+      put!(c,chains)
+    end
+  end
+  c
+end
+    
