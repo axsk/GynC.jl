@@ -1,16 +1,17 @@
 using MAT, DataFrames, Mamba, Gadfly, Distributions
+using Reactive
 
 include("utils.jl")
 
 # indices for measured variables: LH, FSH, E2, P4
-const MEASURED = [2,7,24,25]
+MEASURED = [2,7,24,25]
 # indices for the parameters to be sampled
-const SAMPLEPARMS = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 59, 65, 95, 98, 101, 103]
-SAMPLEPARMS = [6,10]
+hillind = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 59, 65, 95, 98, 101, 103]
+SAMPLEPARMS = deleteat!(collect(1:103), hillind)
 
-const SIGMA_RHO = 0.1
-const SIGMA_Y0 = 1
-const SIGMA_PARMS = 1
+SIGMA_RHO = 0.2
+SIGMA_Y0 = 1000
+SIGMA_PARMS = 1000;
 
 
 """ load the patient data and return a vector of Arrays, each of shape 4x31 denoting the respective concentration or NaN if not available """
@@ -52,6 +53,13 @@ end
 
 """ likelihood (up to proport.) for the parameters given the patientdata """
 function loglikelihood(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector{Float64})
+  negparms = collect(1:length(parms))[parms.<0]
+  negy0    = collect(1:length(y0)   )[y0   .<0]
+  if length(negparms)+length(negy0) > 0
+    #println("negative parms: ", negparms, ", y0: ", negy0)
+    return -Inf
+  end
+
   tspan = Array{Float64}(collect(1:31))
   y = gync(y0, tspan, parms)[MEASURED,:]
   sum(isnan(y)) > 0 && return -Inf
@@ -59,7 +67,7 @@ function loglikelihood(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector
     [squaredrelativeerror(data, translatecol(y, transl)) 
     for transl in 0:30])
   llh = -1/(2*SIGMA_RHO^2) * sre
-  rand()<0.01 && println("$llh   $(y0[1]) $(parms[SAMPLEPARMS][1])")
+  #rand()<0.01 && println("$llh   $(y0[1]) $(parms[SAMPLEPARMS][1])")
   llh
 end
 
@@ -101,29 +109,32 @@ function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
   m, inputs, [inits]
 end
 
-function run_mcmc(;scheme=1, person=1, iters=10, variance=0.01, burnin=round(Int,iters/10))
+function run_mcmc(person=1 ;scheme=:AMM, iters=10, relpropvariance=0.01, burnin=0)
   parms, y0 = loadparms()
   data = loadpfizer()[person]
-  
-  proposalvariance = diagm(parms[SAMPLEPARMS]) * variance
+
+  samplingnodes = [:sparms, :y0]
+  proposalvariance = diagm(abs2(vcat(parms[SAMPLEPARMS], y0) * relpropvariance));
 
   schemes = Dict{Any,Array{Mamba.Sampler,1}}(
-    :NUTS => [NUTS([:sparms])],
-    :AMM  => [AMM([:sparms], proposalvariance)],
-    :MALA => [MALA([:sparms], 1, proposalvariance)],
-    :AMWG => [AMWG([:sparms], diag(proposalvariance))])
+    :NUTS => [NUTS(samplingnodes)],
+    :AMM  => [AMM (samplingnodes, proposalvariance)],
+    :MALA => [MALA(samplingnodes, 1, proposalvariance)],
+    :AMWG => [AMWG(samplingnodes, diag(proposalvariance))])
 
   m, inp, ini = gyncmodel(data, parms, y0)
   setsamplers!(m, schemes[scheme])
   mcmc(m, inp, ini, iters, burnin=burnin)
 end
 
-function continue(chains::ModelChains, iters, block=100)
+function mcchannel(chains::ModelChains, iters, block=100)
   c=Channel(1)
   @schedule begin
     for i=1:ceil(Int,iters/block)
-      chains = @fetch mcmc(chains, min(iters - (i-1)*block, block))
-      isopen || break
+      ref = @spawn mcmc(chains, min(iters - (i-1)*block, block), verbose=false)
+      wait(ref)
+      chain = fetch(ref)
+      isopen(c) || break
       isready(c) && take!(c)
       put!(c,chains)
     end
@@ -131,3 +142,16 @@ function continue(chains::ModelChains, iters, block=100)
   c
 end
     
+function mcsignal(chains::ModelChains, iters=100_000, block=100)
+  x = Input(chains)
+  @schedule begin
+    for i=1:ceil(Int,iters/block)
+      ref = @spawn mcmc(chains, min(iters - (i-1)*block, block), verbose=false)
+      wait(ref)
+      chains = fetch(ref)
+      push!(x, chains)
+    end
+  end
+  x
+end
+
