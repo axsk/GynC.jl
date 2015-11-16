@@ -56,7 +56,7 @@ function loglikelihood(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector
   negparms = collect(1:length(parms))[parms.<0]
   negy0    = collect(1:length(y0)   )[y0   .<0]
   if length(negparms)+length(negy0) > 0
-    #println("negative parms: ", negparms, ", y0: ", negy0)
+    println("negative parms: ", negparms, ", y0: ", negy0)
     return -Inf
   end
 
@@ -84,7 +84,15 @@ function translatecol(data::Matrix, transl::Integer)
   hcat(data[:, 1+transl:31], data[:, 1:transl])
 end
 
-""" Return the Bayesian Model with priors y0 ~ Norm(y0), parms' ~ Norm(parms'). Here parms' denotes the sampled parameters, while `parms` are all parameters. """
+""" given the desired mean and std, return the mu and scale parms for the lognormal distribtuion. """
+function lognormalparms(mean, std)
+  var = std^2
+  s2 = log(1 + var / mean^2)
+  mu = log(mean) - s2 / 2
+  (mu, sqrt(s2))
+end
+
+""" Return the Bayesian Model with priors y0 ~ LN(y0), parms' ~ LN(parms'). Here parms' denotes the sampled parameters, while `parms` are all parameters. """
 function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
   # copy for mutating via mergeparms!
   tparms      = copy(parms)
@@ -92,10 +100,10 @@ function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
 
   m = Model(
     y0 = Stochastic(1,
-      () -> MvNormal(y0, SIGMA_Y0 * y0)),
+      () -> [LogNormal(lognormalparms(y, SIGMA_Y0 * y)...) for y in y0]),
       
     sparms = Stochastic(1,
-      () -> MvNormal(sparms, SIGMA_PARMS * sparms)),
+      () -> [LogNormal(lognormalparms(p, SIGMA_PARMS * p)...) for p in sparms]),
       
     parms = Logical(1,
       (sparms) -> (tparms[SAMPLEPARMS] = sparms; tparms), false),
