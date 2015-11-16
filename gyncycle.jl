@@ -63,9 +63,10 @@ function loglikelihood(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector
   tspan = Array{Float64}(collect(1:31))
   y = gync(y0, tspan, parms)[MEASURED,:]
   sum(isnan(y)) > 0 && return -Inf
-  sre = minimum(
-    [squaredrelativeerror(data, translatecol(y, transl)) 
-    for transl in 0:30])
+  #sre = minimum(
+  #  [squaredrelativeerror(data, translatecol(y, transl)) 
+  #  for transl in 0:30])
+  sre = squaredrelativeerror(data, y)
   llh = -1/(2*SIGMA_RHO^2) * sre
   #rand()<0.01 && println("$llh   $(y0[1]) $(parms[SAMPLEPARMS][1])")
   llh
