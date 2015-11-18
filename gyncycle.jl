@@ -6,12 +6,10 @@ include("utils.jl")
 # indices for measured variables: LH, FSH, E2, P4
 MEASURED = [2,7,24,25]
 # indices for the parameters to be sampled
-hillind = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 59, 65, 95, 98, 101, 103]
+hillind = [4, 6, 10, 17, 21, 22, 26, 32, 34, 51, 52, 53, 54, 55, 62, 65, 68, 95, 98, 101, 103]
 SAMPLEPARMS = deleteat!(collect(1:103), hillind)
 
-SIGMA_RHO = 0.2
-SIGMA_Y0 = 1000
-SIGMA_PARMS = 1000;
+
 
 speciesnames = open(readlines, "data/model/speciesnames.txt")
 parameternames = open(readlines, "data/model/parameternames.txt")
@@ -103,10 +101,10 @@ function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
 
   m = Model(
     y0 = Stochastic(1,
-      () -> UnivariateDistribution[LogNormal(lognormalparms(y, SIGMA_Y0 * y)...) for y in y0]),
+    () -> UnivariateDistribution[Truncated(Flat(),0,Inf) for y in y0]),
       
     sparms = Stochastic(1,
-      () -> UnivariateDistribution[LogNormal(lognormalparms(p, SIGMA_PARMS * p)...) for p in sparms]),
+    () -> UnivariateDistribution[Truncated(Flat(),0,Inf) for p in sparms]),
       
     parms = Logical(1,
       (sparms) -> (tparms[SAMPLEPARMS] = sparms; tparms), false),
