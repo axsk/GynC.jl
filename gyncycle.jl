@@ -13,6 +13,8 @@ SIGMA_RHO = 0.2
 SIGMA_Y0 = 1000
 SIGMA_PARMS = 1000;
 
+speciesnames = open(readlines, "data/model/speciesnames.txt")
+parameternames = open(readlines, "data/model/parameternames.txt")
 
 """ load the patient data and return a vector of Arrays, each of shape 4x31 denoting the respective concentration or NaN if not available """
 function loadpfizer(path = "data/pfizer_normal.txt")
@@ -101,10 +103,10 @@ function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
 
   m = Model(
     y0 = Stochastic(1,
-      () -> [LogNormal(lognormalparms(y, SIGMA_Y0 * y)...) for y in y0]),
+      () -> UnivariateDistribution[LogNormal(lognormalparms(y, SIGMA_Y0 * y)...) for y in y0]),
       
     sparms = Stochastic(1,
-      () -> [LogNormal(lognormalparms(p, SIGMA_PARMS * p)...) for p in sparms]),
+      () -> UnivariateDistribution[LogNormal(lognormalparms(p, SIGMA_PARMS * p)...) for p in sparms]),
       
     parms = Logical(1,
       (sparms) -> (tparms[SAMPLEPARMS] = sparms; tparms), false),
