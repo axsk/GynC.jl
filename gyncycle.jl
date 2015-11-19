@@ -101,10 +101,10 @@ function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
 
   m = Model(
     y0 = Stochastic(1,
-    () -> UnivariateDistribution[Truncated(Flat(),0,Inf) for y in y0]),
+    () -> UnivariateDistribution[Truncated(Flat(),0,y*SIGMA_Y0) for y in y0]),
       
     sparms = Stochastic(1,
-    () -> UnivariateDistribution[Truncated(Flat(),0,Inf) for p in sparms]),
+    () -> UnivariateDistribution[Truncated(Flat(),0,p*SIGMA_PARMS) for p in sparms]),
       
     parms = Logical(1,
       (sparms) -> (tparms[SAMPLEPARMS] = sparms; tparms), false),
