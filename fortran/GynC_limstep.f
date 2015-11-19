@@ -122,7 +122,7 @@ c       return
          do i = 1, n
 c          yAll(j*n+i)=y0(i)
           
-          yAll(i,j)=y0(i)
+          yAll(i,j+1)=y0(i)
          end do
      
    
