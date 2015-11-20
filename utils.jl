@@ -14,9 +14,8 @@ type MultivariateDensityDistribution <: ContinuousMultivariateDistribution
   insupport::Function
 end
 
-misapprox(x::Number, y::Number) = (isapprox(x,y) || isequal(x,y))
-misapprox(x,y) = (r=map(misapprox, x,y); all(r))
-mmap(f,x,y) = (l = min(length(x), length(y)); map(f, x[1:l], y[1:l]))
+myisapprox(x::Number, y::Number) = (isapprox(x,y) || isequal(x,y))
+myisapprox(x,y) = (r=map(myisapprox, x,y); all(r))
 
 """ return memoized version of f, caching the last n calls' results (overwriting on same-argument calls)"""
 function cache(fn::Function, n::Int)
@@ -54,7 +53,7 @@ length(d::MultivariateDensityDistribution)               = d.dim
 size(d::MultivariateDensityDistribution)                 = d.dim
 
 """ Given samplings (of the same size), concatenate them to form their mean sampling """ 
-function mean(chains::Vector{Mamba.ModelChains}) 
+function samplemean(chains::Vector{Mamba.ModelChains}) 
   for i = 1:length(chains)-1
     size(chains[i], 1) == size(chains[i+1], 1) ||
       warn("concatenated chains have not same length")
@@ -75,3 +74,10 @@ function gync(y0::Vector{Float64}, tspan::Vector{Float64}, Parms::Vector{Float64
     y, copy(y0), tspan, &n, &m, Parms)
   y
 end
+
+function mlegync()
+  tspan = Array{Float64}(collect(1:31))
+  parms, y0 = loadparms()
+  gync(y0, tspan, parms)
+end
+
