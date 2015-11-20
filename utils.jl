@@ -23,7 +23,7 @@ function cache(fn::Function, n::Int)
     cout = fill!(Vector{Any}(n), nothing)
     c = 1
     function (args...)
-        i = any(cin.==nothing) ? 0 : findfirst(cargs->misapprox(cargs,args), cin)
+        i = any(cin.==nothing) ? 0 : findfirst(cargs->myisapprox(cargs,args), cin)
         res = i == 0 ? fn(args...) : cout[i]
         cin[c] = deepcopy(args)
         cout[c] = res
