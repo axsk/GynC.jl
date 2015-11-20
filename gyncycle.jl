@@ -72,6 +72,9 @@ function loglikelihood(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector
   llh
 end
 
+# cache loglikelihood to evade double evaluation, see https://github.com/brian-j-smith/Mamba.jl/issues/68
+cachedllh = cache(loglikelihood,3)
+
 """ componentwise squared relative difference of two matrices """
 function squaredrelativeerror(data1::Matrix, data2::Matrix)
   diff = data1 - data2
@@ -111,7 +114,7 @@ function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
       
     data = Stochastic(2,
       (y0, parms) -> DensityDistribution(size(data),
-        data -> loglikelihood(data, parms.value, y0.value), log=true),  false))
+        data -> cachedllh(data, parms.value, y0.value), log=true),  false))
 
   inputs = Dict{Symbol,Any}()
   inits  = Dict{Symbol,Any}(:y0 => y0, :sparms => sparms, :data => data)

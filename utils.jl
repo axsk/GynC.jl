@@ -14,6 +14,25 @@ type MultivariateDensityDistribution <: ContinuousMultivariateDistribution
   insupport::Function
 end
 
+misapprox(x::Number, y::Number) = (isapprox(x,y) || isequal(x,y))
+misapprox(x,y) = (r=map(misapprox, x,y); all(r))
+mmap(f,x,y) = (l = min(length(x), length(y)); map(f, x[1:l], y[1:l]))
+
+""" return memoized version of f, caching the last n calls' results (overwriting on same-argument calls)"""
+function cache(fn::Function, n::Int)
+    cin  = fill!(Vector{Any}(n), nothing)
+    cout = fill!(Vector{Any}(n), nothing)
+    c = 1
+    function (args...)
+        i = any(cin.==nothing) ? 0 : findfirst(cargs->misapprox(cargs,args), cin)
+        res = i == 0 ? fn(args...) : cout[i]
+        cin[c] = deepcopy(args)
+        cout[c] = res
+        c = c % n + 1
+        res
+    end
+end
+
 """ Constructs a Distribution based on the given density function """
 DensityDistribution(pdf::Function; kwargs...) = DensityDistribution(1, pdf; kwargs...)
 
