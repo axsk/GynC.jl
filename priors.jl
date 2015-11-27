@@ -1,31 +1,34 @@
+""" return truncated flat distributions on the cube product([0, max_i]) """
+truncflatprior(max::Vector) = UnivariateDistribution[Truncated(Flat(),0,y) for y in max]
+
+
+""" Prior for y using the mixture of known values and their variances """
+import Distributions: minimum, maximum
+minimum(d::Distributions.MixtureModel) = -Inf
+maximum(d::Distributions.MixtureModel) =  Inf
+
+independentmixtureprior(stdfactor::Real=1) = independentmixtureprior(mlegync(), stdfactor)
+
+function independentmixtureprior(y::Matrix, stdfactor::Real)
+  mms = mapslices(y, 2) do yi
+    normals = [Normal(yit, std(yi) * stdfactor) for yit in yi]
+    Truncated(MixtureModel(normals), 0, Inf)
+  end
+  UnivariateDistribution[mms...]
+end
+
+""" Prior for y using full covariance of known values """
 type GaussianMixtureDistr <: ContinuousMultivariateDistribution
   normals::Vector{MvNormal}
 end
 
-independentmixtureprior() = independentmixtureprior(mlegync())
-
-""" given y[i,t], return the mixture of gaussians around each y[:,t] with diagonal variance of y[i,:] """
-function independentmixtureprior(y::Matrix)
-  stds    = std(y, 2) |> vec
-  normals = mapslices(y, 1) do yt
-    MvNormal(vec(yt), stds)
-  end |> vec
+fullmixtureprior() = fullmixtureprior(mlegync())
+function fullmixtureprior(y::Matrix)
+  q = Base.cov(y, vardim=2)
+  normals = mapslices(y_t->MvNormal(vec(y_t), q), y, 1) |> vec
   GaussianMixtureDistr(normals)
 end
 
-
-YPrior() = YPrior(mlegync())
-
-function YPrior(y::Matrix) 
-  scales = mean(y, 2) |> vec
-  scales *= 1/2
-  invscalemat = scales.^-1 |> diagm
-  q = Base.cov(invscalemat * y, vardim=2)
-  normals = mapslices(y_t->MvNormal(vec(y_t./scales), q), y, 1) |> vec
-  YPrior(normals, scales)
-end
-
-
-logpdf(d::GaussianMixtureDistr, x::Vector) = map(normal->pdf(normal, x), d.normals) |> sum |> log
-insupport(d::GaussianMixtureDistr, x::Vector) = all(x>.0)
-length(d::GaussianMixtureDistr) = length(d.normals)
+logpdf(d::GaussianMixtureDistr, x::Vector) = map(normal->pdf(normal, x), d.normals) |> mean |> log
+insupport(d::GaussianMixtureDistr, x::Vector) = (r=all(x.>0); println(r); r)
+length(d::GaussianMixtureDistr) = 33

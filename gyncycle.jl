@@ -1,8 +1,3 @@
-using MAT, DataFrames, Mamba, Gadfly, Distributions
-using Reactive
-
-include("utils.jl")
-
 # indices for measured variables: LH, FSH, E2, P4
 MEASURED = [2,7,24,25]
 # indices for the parameters to be sampled
@@ -105,7 +100,7 @@ function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
 
   m = Model(
     y0 = Stochastic(1,
-    () -> independentmixtureprior(),
+    () -> independentmixtureprior(SIGMA_Y0)), 
       
     sparms = Stochastic(1,
     () -> UnivariateDistribution[Truncated(Flat(),0,p*SIGMA_PARMS) for p in sparms]),
