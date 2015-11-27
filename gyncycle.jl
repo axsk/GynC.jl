@@ -6,7 +6,8 @@ include("utils.jl")
 # indices for measured variables: LH, FSH, E2, P4
 MEASURED = [2,7,24,25]
 # indices for the parameters to be sampled
-hillind = [4, 6, 10, 17, 21, 22, 26, 32, 34, 51, 52, 53, 54, 55, 62, 65, 68, 95, 98, 101, 103]
+# veraltetes modell [4, 6, 10, 17, 21, 22, 26, 32, 34, 51, 52, 53, 54, 55, 62, 65, 68, 95, 98, 101, 103]
+hillind = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 59, 65, 95, 98, 101, 103]
 SAMPLEPARMS = deleteat!(collect(1:103), hillind)
 
 
@@ -104,7 +105,7 @@ function gyncmodel(data::Matrix, parms::Vector, y0::Vector)
 
   m = Model(
     y0 = Stochastic(1,
-    () -> UnivariateDistribution[Truncated(Flat(),0,y*SIGMA_Y0) for y in y0]),
+    () -> independentmixtureprior(),
       
     sparms = Stochastic(1,
     () -> UnivariateDistribution[Truncated(Flat(),0,p*SIGMA_PARMS) for p in sparms]),
