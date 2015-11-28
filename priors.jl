@@ -1,8 +1,10 @@
-""" return truncated flat distributions on the cube product([0, max_i]) """
+###  return truncated flat distributions on the cube product([0, max_i])
+
 truncflatprior(max::Vector) = UnivariateDistribution[Truncated(Flat(),0,y) for y in max]
 
 
-""" Prior for y using the mixture of known values and their variances """
+### Prior for y using the mixture of known values and their variances
+
 import Distributions: minimum, maximum
 minimum(d::Distributions.MixtureModel) = -Inf
 maximum(d::Distributions.MixtureModel) =  Inf
@@ -17,7 +19,8 @@ function independentmixtureprior(y::Matrix, stdfactor::Real)
   UnivariateDistribution[mms...]
 end
 
-""" Prior for y using full covariance of known values """
+### Prior for y using full covariance of known values 
+
 type GaussianMixtureDistr <: ContinuousMultivariateDistribution
   normals::Vector{MvNormal}
 end
