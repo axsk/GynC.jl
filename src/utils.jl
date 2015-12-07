@@ -69,7 +69,7 @@ function gync(y0::Vector{Float64}, tspan::Vector{Float64}, Parms::Vector{Float64
   m = length(tspan)
   y = Array{Float64}(n,m)
 
-  ccall((:limstep_, "fortran/GynC.so"), Ptr{Array{Float64,2}}, 
+  ccall((:limstep_, "../fortran/GynC.so"), Ptr{Array{Float64,2}}, 
     (Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Int64}, Ptr{Int64}, Ptr{Float64}),
     y, copy(y0), tspan, &n, &m, Parms)
   y
@@ -77,7 +77,7 @@ end
 
 function mlegync()
   tspan = Array{Float64}(collect(1:31))
-  parms, y0 = loadparms()
+  parms, y0 = loadmles()
   gync(y0, tspan, parms)
 end
 

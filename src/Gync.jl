@@ -1,4 +1,4 @@
-using MAT, Mamba, Distributions
+using JLD, DataFrames, MAT, Mamba, Distributions
 
 include("utils.jl")
 include("priors.jl")

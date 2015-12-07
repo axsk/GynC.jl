@@ -40,17 +40,13 @@ function model(c::ModelConfig)
     data = Stochastic(2,
       (y0, parms) -> DensityDistribution(
         size(c.data),
-        data -> cachedllh(data, parms.value, y0.value), 
+        data -> cachedllh(data, parms.value, y0.value, c.sigma_rho), 
         log=true),
       false))
 end
 
-""" cached loglikelihood to evade double evaluation """
-# see https://github.com/brian-j-smith/Mamba.jl/issues/68
-cachedllh = cache(llh,3)
-
 """ likelihood (up to proport.) for the parameters given the patientdata """
-function llh(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector{Float64})
+function llh(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector{Float64}, sigma::Real)
   negparms = collect(1:length(parms))[parms.<0]
   negy0    = collect(1:length(y0)   )[y0   .<0]
   if length(negparms)+length(negy0) > 0
@@ -62,10 +58,12 @@ function llh(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector{Float64})
   y = gync(y0, tspan, parms)[MEASURED,:]
   any(isnan(y)) > 0 && return -Inf
   sre = squaredrelativeerror(data, y)
-  llh = -1/(2*SIGMA_RHO^2) * sre
-  #rand()<0.01 && println("$llh   $(y0[1]) $(parms[SAMPLEPARMS][1])")
-  llh
+  -1/(2*sigma^2) * sre
 end
+
+""" cached loglikelihood to evade double evaluation """
+# see https://github.com/brian-j-smith/Mamba.jl/issues/68
+cachedllh = cache(llh,3)
 
 """ componentwise squared relative difference of two matrices """
 function squaredrelativeerror(data1::Matrix, data2::Matrix)
