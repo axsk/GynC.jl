@@ -26,10 +26,11 @@ function model(c::ModelConfig)
   # copy for mutating via mergeparms!
   tparms = copy(c.mle_parms)
   mle_sparms = c.mle_parms[c.sampleparms]
+  mley = mlegync()
 
   Model(
     y0 = Stochastic(1,
-      () -> independentmixtureprior(c.sigma_y0)), 
+      () -> independentmixtureprior(mley, c.sigma_y0)), 
       
     sparms = Stochastic(1,
       () -> UnivariateDistribution[Truncated(Flat(),0,p*c.sigma_parms) for p in mle_sparms]),

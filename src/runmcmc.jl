@@ -5,11 +5,12 @@ type MCMCConfig
   sampler               # :amm or :amwg
   adapt
   sigma_proposal        # std relative to current value
+  jldname
 end
 
-MCMCConfig() = MCMCConfig(200, 100, 3, :amm, :all, 0.1)
+MCMCConfig() = MCMCConfig(200, 100, 3, :amm, :all, 0.1, "")
 
-function runmcmc(gc::ModelConfig, mc::MCMCConfig, jldname="test.jld")
+function createsim(mc::MCMCConfig, gc::ModelConfig)
   # TODO: proof
   mle_sparms = gc.mle_parms[gc.sampleparms]
 
@@ -25,13 +26,6 @@ function runmcmc(gc::ModelConfig, mc::MCMCConfig, jldname="test.jld")
   inp = Dict{Symbol,Any}()
   ini = Dict{Symbol,Any}(:y0 => gc.mle_y0, :sparms => mle_sparms, :data => gc.data)
 
-  sim = mcmc(m, inp, [ini for i=1:mc.chains], mc.blocksize, verbose=false, chains=mc.chains)
-
-  !isempty(jldname) && println("writing to $jldname")
-
-  while size(sim,1) < mc.iters
-    !isempty(jldname) && save(jldname, "chain", sim.value, "gc", gc, "mc", mc) 
-    @time sim = mcmc(sim, mc.blocksize, verbose=false)
-  end
-  sim
+  chain = (m, inp, [ini])
 end
+
