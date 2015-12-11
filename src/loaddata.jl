@@ -1,16 +1,16 @@
-speciesnames = open(readlines, "../data/speciesnames.txt")
-parameternames = open(readlines, "../data/parameternames.txt")
+speciesnames = open(readlines, "data/speciesnames.txt")
+parameternames = open(readlines, "data/parameternames.txt")
 
 """ load the (externally computed) maximal likelihood estimates """
 function loadmles()
-  parmat = matread("../data/parameters.mat")
+  parmat = matread("data/parameters.mat")
   parms  = vec(parmat["para"])
   y0     = vec(parmat["y0_m16"])
   parms, y0
 end
 
 """ load the patient data and return a vector of Arrays, each of shape 4x31 denoting the respective concentration or NaN if not available """
-function pfizerdata(person, path = "../data/pfizer_normal.txt")
+function pfizerdata(person, path = "data/pfizer_normal.txt")
   data = readtable(path, separator='\t')
   results = Vector()
   map(groupby(data, 6)) do subject
