@@ -1,6 +1,6 @@
 module Gync
 
-using JLD, DataFrames, MAT, Mamba, Distributions
+using JLD, HDF5, DataFrames, MAT, Mamba, Distributions
 
 export runsims, benchmark, script
 

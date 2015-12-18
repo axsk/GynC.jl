@@ -14,69 +14,108 @@ function createsim(c::ModelConfig, sigma_proposal = 0.1)
   m, inp, [ini]
 end
 
-function runsim(out::AbstractMatrix=zeros(2_000,115), person=1, c=Channel())
-  maxiters = size(out,1)
-  blocksize = 100 # interval for updating results
-  
-  sim = mcmc(createsim(ModelConfig(person))..., 1, verbose=false)
-
-  while last(sim) < maxiters
-    a = last(sim) 
-    b = min(a+blocksize, maxiters)
-    sim = mcmc(sim, b-a, verbose=false)
-    #put!(c, sim.value[a:b,:,1]) 
-    #save("out/$person.jld", "chain", sim.value)
-    out[a:b,:] = sim.value[a:b,:,1]
-  end
-  out
+type SampleChannel
+  channel
+  person::Int
+  chain::Int
+  counter::Int
 end
 
-function runsim(iters::Int, person::Int, c::Channel)
-  chunksize = 100 # interval for updating results
+SampleChannel(person::Int, chain::Int) = SampleChannel(RemoteRef(()->Channel()), person, chain, 0)
 
-  sim = mcmc(createsim(ModelConfig(person))..., 1, verbose=false)
-  put!(c, sim.value)
-
+function runsim(iters::Int, person::Int, sc::SampleChannel)
+  chunksize = 1000
+  sim = mcmc(createsim(ModelConfig(person))..., chunksize, verbose=false)
+  put!(sc.channel, sim.value[:,:,1])
   while last(sim) < iters
     a = last(sim)
-    b = min(a+blocksize, iters)
+    b = min(a+chunksize, iters)
     sim = mcmc(sim, b-a, verbose=false)
-    put!(c, sim.value[a+1:b,:,1]) 
+    put!(sc.channel, sim.value[a+1:b,:,1]) 
   end
 end
 
-function createjld(filename, iters, chains, persons)
-  j = jldopen(filename, "w")
-  for p in persons 
-    d_create(j.plain, "p$p", Float64, ((iters,115,chains),(-1,115,chains)), "chunk", (100,115,1)) 
-  end 
-  j
+typealias Subject Int
+id(s::Subject) = String(s)
+
+typealias Chain SampleChannel
+
+""" a job contains multiple running chains for one subject """
+function job(s::Subject, iters::Int, chains::Int)
+  # initialize file
+  filename = "$path/$(id(s)).jld"
+  jldopen(filename, "w") do j
+    d_create(j.plain, "chains", Float64, ((iters,115,chains),(-1,115,-1)), "chunk", (100,115,1))
+  end
+
+  # channels for the updates
+  channels = [RemoteRef(()->Channel()) for c in 1:chains]
+  counter  = zeros(chains)
+
+  # spawn each chain in a thread
+  refs = map(c->@spawn runsim(iters, p, c), channels)
+  
+  # create task to safe updates
+  for (i,c) in channels
+    @schedule while true
+      wait(c)
+      samples = take!(c)
+      jldopen(filename, "r+") do j
+        j["chains"][counter+1 : counter+size(samples, 1), :, i] = samples
+      end
+      counter[i] += size(samples, 1)
+      # race condition?
+      isready(refs[i]) && !isready(c) && break
+    end
+  end
+
+   
 end
 
-function runsims(persons=1, chains=1, iters=1_000)
+
+function savechannels(channels)
+  for c in channels
+    !isready(c.channel) && continue
+    samples = take!(sc.channel)
+    a = sc.counter + 1
+    b = sc.counter + size(samples, 1)
+    sc.counter = b
+    jldopen("out/all.jld", "r+") do j
+      j["p$(sc.person)"][a:b,:,sc.chain] = samples
+    end
+    println("saved ", size(samples,1), " samples")
+  end
+end
+
+
+function jldinit(iters, chains, persons)
+  jldopen("out/all.jld", "w") do j
+    for p in persons 
+      d_create(j.plain, "p$p", Float64, ((iters,115,chains),(-1,115,chains)), "chunk", (100,115,1)) 
+    end
+  end 
+end
+
+function runsims(persons=1:5, chains=3, iters=500_000)
   np = length(persons)
-  channels = [Channel() for i=1:np, j=1:chains]
+  channels = [SampleChannel(p, c) for p in persons, c=1:chains]
   range = [(ip,p,c) for (ip,p) in enumerate(persons), c=1:chains]
   ref = @spawn pmap(range) do r
     let ip=r[1], p=r[2], c=r[3]
       runsim(iters, p, channels[ip, c])
     end
   end
-  ref, channels
-end
-
-
-
-
-function runsims(persons=1, chains=1, maxiters=1_000)   
-  np = length(persons)
-  S = SharedArray(Float64, (maxiters, 115, chains, np))
-  range = [(ip,p,c) for (ip,p) in enumerate(persons), c=1:chains]
-  ref = @spawn pmap(r->let ip=r[1], p=r[2], c=r[3]
-                   runsim(sub(S, (:,:,c,ip)), p)
-                 end, range)
-  block && wait(ref)
-  S, ref
+  jldinit(iters, chains, persons)
+  while !isready(ref)
+    tic()
+    savechannels(channels)
+    sampled = sum([sc.counter for sc in channels])
+    println(sampled, " samples (", round(100*sampled/(length(persons)*chains*iters),1), "%)")
+    sleep(10)
+    toc()
+  end
+  savechannels(channels)
+  ref
 end
 
 function benchmark(chains=nworkers(), maxiters=200)
