@@ -1,11 +1,11 @@
 const sigma_proposal = 0.1
-const chunksize = 1000
+const chunksize = 10
 
 typealias Subject Int
-filename(s::Subject) = String(s)
+id(s::Subject) = string(s)
 
-" run a single chain and push the updates to the given channel "
-function runchain(iters::Int, subj::Subject, update::AbstractChannel)
+""" run a single chain and push the updates to the given channel """
+function runchain(iters::Int, subj::Subject, update::Union{AbstractChannel, RemoteRef})
   c = ModelConfig(subj)
 
   # create sampler
@@ -21,8 +21,9 @@ function runchain(iters::Int, subj::Subject, update::AbstractChannel)
   ini = Dict{Symbol,Any}(:y0 => c.mle_y0, :sparms => mle_sparms, :data => c.data)
   
   # initial run
-  mcmc(m, inp, [ini], chunksize, verbose=false)
+  sim = mcmc(m, inp, [ini], min(chunksize, iters), verbose=false)
   put!(update, sim.value[:,:,1])
+
 
   # subsequent runs
   while last(sim) < iters
@@ -34,37 +35,41 @@ function runchain(iters::Int, subj::Subject, update::AbstractChannel)
 end
 
 """ a job contains multiple running chains for one subject """
-function runchains(s::Subject, iters::Int, chains::Int)
+function runchains(s::Subject, iters::Int, chains::Int, path="out")
   # initialize file
-  filename = "$path/$(filename(s)).jld"
-  jldopen(filename, "w") do j
-    d_create(j.plain, "chains", Float64, ((iters,115,chains),(-1,115,-1)), "chunk", (100,115,1))
+  path = "$path/$(id(s)).jld"
+  mkpath(dirname(path))
+  jldopen(path, "w") do j
+    d_create(j.plain, "chains", Float64, ((iters,115,chains),(-1,115,-1)), "chunk", (chunksize,115,1))
   end
 
   # channels for the updates
-  channels = [RemoteRef(()->Channel()) for c in 1:chains]
-  counter  = zeros(chains)
+  channels = [RemoteRef() for c in 1:chains]
+  counter  = zeros(Int, chains)
 
   # spawn each chain in a thread
-  refs = map(c->@spawn runchain(iters, s, c), channels)
+  refs = map(c->@spawn(runchain(iters, s, c)), channels)
   
   # create task to safe updates
-  for (i,c) in channels
+  for (i,c) in enumerate(channels)
     @schedule while true
       wait(c)
       samples = take!(c)
-      jldopen(filename, "r+") do j
-        j["chains"][counter+1 : counter+size(samples, 1), :, i] = samples
+      jldopen(path, "r+") do j
+        j["chains"][counter[i]+1:counter[i]+size(samples, 1), :, i] = samples
       end
       counter[i] += size(samples, 1)
       # race condition?
       isready(refs[i]) && !isready(c) && break
     end
   end
+  refs, channels, () -> sum(counter) / (iters*chains)
 end
 
 function script(persons=1:3, iters=500_000, chains=3)
-  for s in persons
-    runchains(s, iters, chains)
-  end
+  refs = vcat([runchains(s, iters, chains) for s in persons]...)
+end
+
+function benchmark(iters=300, chains=nworkers())
+  runchains(1, iters, chains, "/tmp/gync")
 end
