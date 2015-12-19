@@ -1,5 +1,5 @@
 const sigma_proposal = 0.1
-const chunksize = 10
+const chunksize = 1000
 
 typealias Subject Int
 id(s::Subject) = string(s)
@@ -34,7 +34,7 @@ function runchain(iters::Int, subj::Subject, update::Union{AbstractChannel, Remo
   end
 end
 
-""" a job contains multiple running chains for one subject """
+""" run mutliple chains asynchronously """
 function runchains(s::Subject, iters::Int, chains::Int, path="out")
   # initialize file
   path = "$path/$(id(s)).jld"
@@ -63,13 +63,22 @@ function runchains(s::Subject, iters::Int, chains::Int, path="out")
       isready(refs[i]) && !isready(c) && break
     end
   end
-  refs, channels, () -> sum(counter) / (iters*chains)
+
+  progress() = sum(counter) / (iters*chains)
+  refs, channels, progress
 end
 
-function script(persons=1:3, iters=500_000, chains=3)
-  refs = vcat([runchains(s, iters, chains) for s in persons]...)
-end
-
-function benchmark(iters=300, chains=nworkers())
-  runchains(1, iters, chains, "/tmp/gync")
+function run(persons=1, iters=100, chains=1)
+  fns=[runchains(s, iters, chains)[3] for s in persons]
+  progress() = mean(map(x->x(), fns))
+  next = 0
+  start = now()
+  while true
+    if progress() >= next
+      next = min(next+0.02, 1)
+      println(now(), ", ", progress()*100, "%, ", round(progress()*iters*chains*length(persons)/(Int(now()-start)/1000),1), " s/sec")
+    end
+    progress() == 1 && break
+    sleep(1/20)
+  end
 end
