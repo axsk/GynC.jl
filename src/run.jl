@@ -4,81 +4,55 @@ const chunksize = 1000
 typealias Subject Int
 id(s::Subject) = string(s)
 
-""" run a single chain and push the updates to the given channel """
-function runchain(iters::Int, subj::Subject, update::Union{AbstractChannel, RemoteRef})
+scaledprop(relprop::Float64, n::Int) = log(1+(relprop^2)) * eye(n)
+
+function startmcmc(subj::Subject, iters::Int, chains::Int, path::String, relprop::Float64=0.1)
   c = ModelConfig(subj)
 
   # create sampler
   mle_sparms = c.mle_parms[c.sampleparms]
-  d = eye(length(vcat(mle_sparms, c.mle_y0)))
-  proposalvariance = log(1+(sigma_proposal^2)) * d
-  sampler = [AMM([:sparms, :y0],  proposalvariance, adapt=:all)]
+  prop = scaledprop(relprop, length(vcat(mle_sparms, c.mle_y0)))
+  samplers = [AMM([:sparms, :y0], prop, adapt=:all)]
  
   # create model
   m = model(c)
-  setsamplers!(m, sampler)
+  setsamplers!(m, samplers)
   inp = Dict{Symbol,Any}()
   ini = Dict{Symbol,Any}(:y0 => c.mle_y0, :sparms => mle_sparms, :data => c.data)
   
   # initial run
-  sim = mcmc(m, inp, [ini], min(chunksize, iters), verbose=false)
-  put!(update, sim.value[:,:,1])
+  sim = mcmc(m, inp, [ini for i=1:chains], iters, verbose=false)
 
-
-  # subsequent runs
-  while last(sim) < iters
-    a = last(sim)
-    b = min(a+chunksize, iters)
-    sim = mcmc(sim, b-a, verbose=false)
-    put!(update, sim.value[a+1:b,:,1]) 
-  end
-end
-
-""" run mutliple chains asynchronously """
-function runchains(s::Subject, iters::Int, chains::Int, path="out")
-  # initialize file
-  path = "$path/$(id(s)).jld"
+  path = joinpath(path,"$(id(s)).jld")
   mkpath(dirname(path))
   jldopen(path, "w") do j
     d_create(j.plain, "chains", Float64, ((iters,115,chains),(-1,115,-1)), "chunk", (chunksize,115,1))
+    j["chains"] = sim.value
+    j["tune"] = sim.samplers[1].tune
+    j["subj"] = subj
   end
-
-  # channels for the updates
-  channels = [RemoteRef() for c in 1:chains]
-  counter  = zeros(Int, chains)
-
-  # spawn each chain in a thread
-  refs = map(c->@spawn(runchain(iters, s, c)), channels)
-  
-  # create task to safe updates
-  for (i,c) in enumerate(channels)
-    @schedule while true
-      wait(c)
-      samples = take!(c)
-      jldopen(path, "r+") do j
-        j["chains"][counter[i]+1:counter[i]+size(samples, 1), :, i] = samples
-      end
-      counter[i] += size(samples, 1)
-      # race condition?
-      isready(refs[i]) && !isready(c) && break
-    end
-  end
-
-  progress() = sum(counter) / (iters*chains)
-  refs, channels, progress
 end
 
-function run(persons=1, iters=100, chains=1)
-  fns=[runchains(s, iters, chains)[3] for s in persons]
-  progress() = mean(map(x->x(), fns))
-  next = 0
-  start = now()
-  while true
-    if progress() >= next
-      next = min(next+0.02, 1)
-      println(now(), ", ", progress()*100, "%, ", round(progress()*iters*chains*length(persons)/(Int(now()-start)/1000),1), " s/sec")
-    end
-    progress() == 1 && break
-    sleep(1/20)
+function continuemcmc(path::String, iters::Int)
+  jldopen(path, "r") do j
+    last = j["chains"][end, :, :]
+    tune = j["tune"] 
+    subj = j["subj"]
+  end
+
+  c = ModelConfig(subj)
+  samplers = [AMM([:sparms, :y0], tune.SigmaF, adapt=:all)]
+  m = model(c)
+  setsamplers!(m, samplers)
+  inp = Dict{Symbol,Any}()
+  inis = [Dict{Symbol,Any}(:sparms => last[1,1:88,chain], :y0 => last[1,89:end,chain], :data => c.data) for chain in 1:size(last,3)]
+
+  sim = mcmc(m, inp, inis, iters, verbose=false)
+
+  jldopen(path, "r+") do j
+    s = size(j["chains"])
+    set_dims!(j["chains"], (s[1]+iters, s[2], s[3]))
+    j["chains"][s[1]+1:end, :, :] = sim.values
+    j["tune"] = sim.samplers[1].tune
   end
 end
