@@ -1,0 +1,50 @@
+#!/bin/bash
+
+#SBATCH -n 55
+#SBATCH -c 1
+
+#SBATCH -A htc
+#SBATCH -p HTC030
+
+##SBATCH --error=job.%J.err 
+##SBATCH --output=job.%J.out
+
+# compile modules
+echo compiling modules
+srun -n1 -N1 ~/bin/htc030/julia -e \
+  "using Gync;"
+
+path=out
+iters=100_000
+
+export OPENBLAS_NUM_THREADS=1
+
+echo running run 1
+for s in {1..11}
+do
+  for c in {1..5}
+  do
+    filename=$path/$s\_$c.jld
+    (srun -n1 -N1 --exclusive ~/bin/htc030/julia -e  \
+    "using Gync;
+     Gync.startmcmc($s,$iters,1,\"$filename\")") &
+  done
+done
+
+wait
+
+for i in {2..10}
+do
+  echo running run $i
+  for s in {1..11}
+  do
+    for c in {1..5}
+    do
+      filename=$path/$s\_$c.jld
+      (srun -n1 -N1 --exclusive ~/bin/htc030/julia -e  \
+      "using Gync;
+       Gync.continuemcmc(\"$filename\", $iters)") &
+    done
+  done
+  wait
+done
