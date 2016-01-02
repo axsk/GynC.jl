@@ -1,5 +1,8 @@
 # indices for measured variables: LH, FSH, E2, P4
 const MEASURED = [2,7,24,25]
+const hillinds = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 59, 65, 95, 98, 101, 103]
+const sampleparms = deleteat!(collect(1:103), hillinds)
+const mleparms, mley0 = loadmles()
 
 type ModelConfig
   data::Matrix      # measurements
@@ -15,8 +18,6 @@ ModelConfig(person=1; kwargs...) = ModelConfig(pfizerdata(person); kwargs...)
 
 function ModelConfig(data::Matrix; sigma_rho=0.1, sigma_y0=1, sigma_parms=20)
   parms, y0 = loadmles()
-  hillinds = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 59, 65, 95, 98, 101, 103]
-  sampleparms = deleteat!(collect(1:103), hillinds)
   ModelConfig(data, sigma_rho, y0, parms, sigma_y0, sigma_parms, sampleparms)
 end
 
