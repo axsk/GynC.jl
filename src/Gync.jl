@@ -10,5 +10,6 @@ include("priors.jl")
 include("loaddata.jl")
 include("model.jl")
 include("run.jl")
+include("mergedchains.jl")
 
 end

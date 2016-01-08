@@ -12,7 +12,7 @@ end
 
 function likelihood(data::Matrix, sample::Vector, sigma::Real)
   parms, y0 = sampletoparms(sample)
-  exp(llh(data, parms, y0, sigma)
+  exp(llh(data, parms, y0, sigma))
 end
 
 function sampletoparms(sample::Vector)
@@ -44,20 +44,19 @@ end
 
 ### MergedChain
 
-type MergedChain <: AbstractMatrix
+type MergedChain <: AbstractMatrix{Float64}
   chains::Vector{Matrix}
   thin::Int
 end
 
-chainlength(mc::MergedChain) = ceil(length(mc.chains[1]) / mc.thin) |> Int
+chainlength(mc::MergedChain) = ceil(size(mc.chains[1], 1) / mc.thin) |> Int
 nchains(mc::MergedChain) = length(mc.chains)
 
-Base.size(mc::MergedChain) = (nchains(mc) * chainlength(mc), )
-Base.linearindexing(::Type{MergedChain}) = Base.LinearFast()
+Base.size(mc::MergedChain) = (nchains(mc) * chainlength(mc), size(mc.chains[1], 2))
 
-function Base.getindex(mc::MergedChain, i::Int) 
+function Base.getindex(mc::MergedChain, i::Int, i2::Int) 
   chain = floor((i-1) / chainlength(mc)) + 1 |> Int
   index = ((i-1) % chainlength(mc) + 1) * mc.thin
-  mc.chains[chain][index]
+  mc.chains[chain][index, i2]
 end
 
