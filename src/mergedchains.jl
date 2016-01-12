@@ -44,19 +44,23 @@ end
 
 ### MergedChain
 
-type MergedChain <: AbstractMatrix{Float64}
-  chains::Vector{Matrix}
-  thin::Int
+type MergedChain{T<:Real} <: AbstractMatrix{T}
+  chains::Vector{Matrix{T}}
+  
+  function MergedChain{T}(chains::Vector{Matrix{T}})
+    all([size(c) for c in chains] .== size(chains[1])) || warn("chains dont have same size")
+    new(chains)
+  end
 end
 
-chainlength(mc::MergedChain) = ceil(size(mc.chains[1], 1) / mc.thin) |> Int
+chainlength(mc::MergedChain) = size(mc.chains[1], 1)
 nchains(mc::MergedChain) = length(mc.chains)
 
 Base.size(mc::MergedChain) = (nchains(mc) * chainlength(mc), size(mc.chains[1], 2))
 
-function Base.getindex(mc::MergedChain, i::Int, i2::Int) 
+function Base.getindex(mc::MergedChain, i::Int, j::Int) 
   chain = floor((i-1) / chainlength(mc)) + 1 |> Int
-  index = ((i-1) % chainlength(mc) + 1) * mc.thin
-  mc.chains[chain][index, i2]
+  index = ((i-1) % chainlength(mc) + 1)
+  mc.chains[chain][index, j]
 end
 
