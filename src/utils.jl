@@ -62,6 +62,8 @@ function samplemean(chains::Vector{Mamba.ModelChains})
 end
 
 
+const fortranpath = joinpath(dirname(@__FILE__),"..","fortran","GynC.so") 
+
 """ Wrapper to the LIMEX solver for the GynC model 
 solve the model for the times t given initial condition y0 and parameters parms, and store the result in y"""
 function gync(y0::Vector{Float64}, tspan::Vector{Float64}, Parms::Vector{Float64})
@@ -69,7 +71,7 @@ function gync(y0::Vector{Float64}, tspan::Vector{Float64}, Parms::Vector{Float64
   m = length(tspan)
   y = Array{Float64}(n,m)
 
-  ccall((:limstep_, "fortran/GynC.so"), Ptr{Array{Float64,2}},
+  ccall((:limstep_, fortranpath), Ptr{Array{Float64,2}},
     (Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Int64}, Ptr{Int64}, Ptr{Float64}),
     y, copy(y0), tspan, &n, &m, Parms)
   y

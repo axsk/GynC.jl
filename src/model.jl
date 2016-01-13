@@ -1,5 +1,3 @@
-const datadir = joinpath(dirname(@__FILE__), "..", "data")
-
 # indices for measured variables: LH, FSH, E2, P4
 const MEASURED = [2,7,24,25]
 const hillinds = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 59, 65, 95, 98, 101, 103]
@@ -22,7 +20,7 @@ end
 ModelConfig(person::Int=1; kwargs...) = ModelConfig(pfizerdata(person); kwargs...)
 
 function ModelConfig(data::Matrix; sigma_rho=0.05, sigma_y0=1, parms_bound=5)
-  isa(parms_bound, Real) && parms_bound = parms_bound * mleparms
+  isa(parms_bound, Real) && (parms_bound = parms_bound * mleparms)
   ModelConfig(data, sigma_rho, sigma_y0, parms_bound)
 end
 
@@ -36,7 +34,7 @@ function model(c::ModelConfig)
       () -> independentmixtureprior(mlegync(), c.sigma_y0)), 
       
     sparms = Stochastic(1,
-      () -> UnivariateDistribution[Truncated(Flat(), 0, parbound) for parbound in c.parms_bound]),
+      () -> UnivariateDistribution[Truncated(Flat(), 0, parbound) for parbound in c.parms_bound[sampleparms]]),
       
     parms = Logical(1,
       (sparms) -> (tparms[sampleparms] = sparms; tparms), false),

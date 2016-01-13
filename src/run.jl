@@ -1,4 +1,3 @@
-const sigma_proposal = 0.1
 const chunksize = 1000
 
 typealias Subject Int
@@ -9,7 +8,6 @@ function startmcmc(subj::Subject, iters::Int, chains::Int, path::AbstractString,
   c = ModelConfig(subj)
 
   # create sampler
-  mle_sparms = c.mle_parms[c.sampleparms]
   prop = scaledprop(relprop, length(sampledmles))
   samplers = [AMM([:sparms, :y0], prop, adapt=:all)]
  
@@ -21,6 +19,7 @@ function startmcmc(subj::Subject, iters::Int, chains::Int, path::AbstractString,
   
   # initial run
   #debug("starting initial run", Dict(:inits => size(inits)))
+  print(dump(inits))
   sim = mcmc(m, inp, inits, iters, verbose=true, chains=chains)
 
   mkpath(dirname(path))
