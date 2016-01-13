@@ -16,7 +16,7 @@ end
 
 ModelConfig(person=1; kwargs...) = ModelConfig(pfizerdata(person); kwargs...)
 
-function ModelConfig(data::Matrix; sigma_rho=0.1, sigma_y0=1, sigma_parms=20)
+function ModelConfig(data::Matrix; sigma_rho=0.05, sigma_y0=1, sigma_parms=5)
   parms, y0 = loadmles()
   ModelConfig(data, sigma_rho, y0, parms, sigma_y0, sigma_parms, sampleparms)
 end
