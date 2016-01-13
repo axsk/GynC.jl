@@ -10,14 +10,14 @@ function startmcmc(subj::Subject, iters::Int, chains::Int, path::AbstractString,
 
   # create sampler
   mle_sparms = c.mle_parms[c.sampleparms]
-  prop = scaledprop(relprop, length(vcat(mle_sparms, c.mle_y0)))
+  prop = scaledprop(relprop, length(sampledmles))
   samplers = [AMM([:sparms, :y0], prop, adapt=:all)]
  
   # create model
   m = model(c)
   setsamplers!(m, samplers)
   inp = Dict{Symbol,Any}()
-  inits = [Dict(:y0 => c.mle_y0, :sparms => mle_sparms, :data => c.data) for i=1:chains] |> Array{Dict{Symbol,Any}}
+  inits = [Dict(:y0 => mley0, :sparms => mleparms[sampleparms], :data => c.data) for i=1:chains] |> Array{Dict{Symbol,Any}}
   
   # initial run
   #debug("starting initial run", Dict(:inits => size(inits)))
@@ -29,6 +29,7 @@ function startmcmc(subj::Subject, iters::Int, chains::Int, path::AbstractString,
     j["chains"][:,:,:] = sim.value
     j["tune"] = sim.model.samplers[1].tune
     j["subj"] = subj
+    j["modelconfig"] = c
   end
   sim
 end
@@ -60,4 +61,5 @@ function continuemcmc(path::AbstractString, iters::Int)
     delete!(j["tune"])
     j["tune"] = sim.model.samplers[1].tune
   end
+  sim
 end
