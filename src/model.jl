@@ -19,7 +19,7 @@ end
 
 ModelConfig(person::Int=1; kwargs...) = ModelConfig(pfizerdata(person); kwargs...)
 
-function ModelConfig(data::Matrix; sigma_rho=0.05, sigma_y0=1, parms_bound=5)
+function ModelConfig(data::Matrix; sigma_rho=0.1, sigma_y0=1, parms_bound=5)
   isa(parms_bound, Real) && (parms_bound = parms_bound * mleparms)
   ModelConfig(data, sigma_rho, sigma_y0, parms_bound)
 end
@@ -52,7 +52,12 @@ function llh(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector{Float64},
   tspan = Array{Float64}(collect(1:31))
   y = gync(y0, tspan, parms)[MEASURED,:]
   if any(isnan(y)) > 0
-    warn("encountered nan in gync result")
+    #Base.warn("encountered nan in gync result")
+    #try
+      #save("llhdebug.jld", "data", data, "parms", parms, "y0", y0, "sigma", sigma)
+    #catch
+      #println("caught saveexception, worth the effort :)")
+    #end
     return -Inf
   end
   sre = squaredrelativeerror(data, y)

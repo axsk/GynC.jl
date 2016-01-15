@@ -1,10 +1,10 @@
-const chunksize = 1000
+const chunksize = 1
 
 typealias Subject Int
 
 scaledprop(relprop::Float64, n::Int) = log(1+(relprop^2)) * eye(n)
 
-function startmcmc(subj::Subject, iters::Int, chains::Int, path::AbstractString, relprop::Float64=0.1)
+function startmcmc(subj::Subject, iters::Int, chains::Int, path::AbstractString, relprop::Float64=0.1; thin=100)
   c = ModelConfig(subj)
 
   # create sampler
@@ -19,12 +19,11 @@ function startmcmc(subj::Subject, iters::Int, chains::Int, path::AbstractString,
   
   # initial run
   #debug("starting initial run", Dict(:inits => size(inits)))
-  print(dump(inits))
-  sim = mcmc(m, inp, inits, iters, verbose=true, chains=chains)
+  sim = mcmc(m, inp, inits, iters, verbose=true, chains=chains, thin=thin)
 
   mkpath(dirname(path))
   jldopen(path, "w") do j
-    d_create(j.plain, "chains", Float64, ((iters,115,chains),(-1,115,-1)), "chunk", (chunksize,115,1))
+    d_create(j.plain, "chains", Float64, ((size(sim.value,1),115,chains),(-1,115,-1)), "chunk", (chunksize,115,1))
     j["chains"][:,:,:] = sim.value
     j["tune"] = sim.model.samplers[1].tune
     j["subj"] = subj
@@ -33,7 +32,7 @@ function startmcmc(subj::Subject, iters::Int, chains::Int, path::AbstractString,
   sim
 end
 
-function continuemcmc(path::AbstractString, iters::Int)
+function continuemcmc(path::AbstractString, iters::Int; thin=100)
   local last, tune, subj
   jldopen(path, "r") do j
     last = j["chains"][end, :, :]
@@ -51,11 +50,11 @@ function continuemcmc(path::AbstractString, iters::Int)
   m.samplers[1].tune = tune
 
   #debug("continuing run",Dict(:inits => size(inits)))
-  sim = mcmc(m, inp, inits, iters, verbose=true)
+  sim = mcmc(m, inp, inits, iters, verbose=true, thin=thin)
 
   jldopen(path, "r+") do j
     s = size(j["chains"])
-    set_dims!(j.plain["chains"], (s[1]+iters, s[2], s[3]))
+    set_dims!(j.plain["chains"], (s[1]+size(sim.value,1), s[2], s[3]))
     j["chains"][s[1]+1:end, :, :] = sim.value
     delete!(j["tune"])
     j["tune"] = sim.model.samplers[1].tune

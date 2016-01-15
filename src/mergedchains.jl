@@ -53,6 +53,8 @@ type MergedChain{T<:Real} <: AbstractMatrix{T}
   end
 end
 
+mergedchain(chains...) = MergedChain{Float64}(chains)
+
 chainlength(mc::MergedChain) = size(mc.chains[1], 1)
 nchains(mc::MergedChain) = length(mc.chains)
 
