@@ -6,7 +6,7 @@ type WeightedChain
   likelihoods::AbstractMatrix
 end
 
-function WeightedChain(chain::Matrix, data::Vector{Matrix}, sigma::Real)
+function WeightedChain(chain::AbstractMatrix, data::Vector{Matrix}, sigma::Real)
   WeightedChain(chain, ones(size(chain, 1)), likelihoods(chain, data, sigma))
 end
 
@@ -23,23 +23,26 @@ function sampletoparms(sample::Vector)
 end
 
 """ compute the likelihood matrix for given chains, data, sigma) """
-function likelihoods(chain::Matrix, data::Vector{Matrix}, sigma::Real)
+function likelihoods(chain::AbstractMatrix, data::Vector{Matrix}, sigma::Real)
   K = size(chain, 1)
   M = length(data)
   likelihoods = Matrix(K,M)
   for k = 1:K, m = 1:M
-    likelihoods[k,m] = likelihood(data[m], chain[k,:], sigma)
+    likelihoods[k,m] = likelihood(data[m], chain[k,:]|>vec, sigma)
   end
+  likelihoods
 end
 
-function reweight!(c::WeightedChain)
+function reweight(c::WeightedChain)
   w = c.weights
   L = c.likelihoods
   K = size(L,1)
   M = size(L,2)
+  wn = similar(w)
   for k=1:K
-    w[k] = w[k] / M * sum([L[k,m] / sum([w[j] * L[j,m] for j=1:K]) for m=1:M])
+    wn[k] = w[k] / M * sum([L[k,m] / sum([w[j] * L[j,m] for j=1:K]) for m=1:M])
   end
+  wn
 end
 
 ### MergedChain
@@ -53,7 +56,7 @@ type MergedChain{T<:Real} <: AbstractMatrix{T}
   end
 end
 
-mergedchain(chains...) = MergedChain{Float64}(chains)
+mergedchain(chains...) = MergedChain{Float64}(Vector{Matrix{Float64}}(chains...))
 
 chainlength(mc::MergedChain) = size(mc.chains[1], 1)
 nchains(mc::MergedChain) = length(mc.chains)
