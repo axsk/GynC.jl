@@ -1,3 +1,5 @@
+const datadir = joinpath(dirname(@__FILE__), "..", "data")
+
 # indices for measured variables: LH, FSH, E2, P4
 const MEASURED = [2,7,24,25]
 const hillinds = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 59, 65, 95, 98, 101, 103]
@@ -17,7 +19,7 @@ type ModelConfig
   parms_bound::Vector # upper bound of flat parameter prior
 end
 
-ModelConfig(person::Int=1; kwargs...) = ModelConfig(pfizerdata(person); kwargs...)
+ModelConfig(person::Int=1; kwargs...) = ModelConfig(pfizerdata[person]; kwargs...)
 
 function ModelConfig(data::Matrix; sigma_rho=0.1, sigma_y0=1, parms_bound=5)
   isa(parms_bound, Real) && (parms_bound = parms_bound * mleparms)
@@ -85,7 +87,7 @@ function loadmles()
 end
 
 """ load the patient data and return a vector of Arrays, each of shape 4x31 denoting the respective concentration or NaN if not available """
-function pfizerdata(person)
+function pfizerdata()
   data = readtable(joinpath(datadir,"pfizer_normal.txt"), separator='\t')
   results = Vector()
   map(groupby(data, 6)) do subject
@@ -100,5 +102,5 @@ function pfizerdata(person)
     end
     push!(results,p)
   end
-  results[person]
+  results
 end
