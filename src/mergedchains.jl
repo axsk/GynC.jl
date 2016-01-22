@@ -39,8 +39,9 @@ function reweight(c::WeightedChain)
   K = size(L,1)
   M = size(L,2)
   wn = similar(w)
+  norm = [sum([w[j] * L[j,m] for j=1:K]) for m=1:M]
   for k=1:K
-    wn[k] = w[k] / M * sum([L[k,m] / sum([w[j] * L[j,m] for j=1:K]) for m=1:M])
+    wn[k] = w[k] / M * sum([L[k,m] / norm[m] for m=1:M])
   end
   wn
 end
