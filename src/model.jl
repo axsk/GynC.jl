@@ -19,7 +19,7 @@ type ModelConfig
   parms_bound::Vector # upper bound of flat parameter prior
 end
 
-ModelConfig(person::Int=1; kwargs...) = ModelConfig(pfizerdata[person]; kwargs...)
+ModelConfig(person::Int=1; kwargs...) = ModelConfig(pfizerdata()[person]; kwargs...)
 
 function ModelConfig(data::Matrix; sigma_rho=0.1, sigma_y0=1, parms_bound=5)
   isa(parms_bound, Real) && (parms_bound = parms_bound * mleparms)
@@ -76,31 +76,4 @@ function squaredrelativeerror(data1::Matrix, data2::Matrix)
   # TODO: divide by data1 or data2?
   rdiff = diff ./ data2
   sre   = sumabs2(rdiff[!isnan(rdiff)]) / length(!isnan(rdiff))
-end
-
-""" load the (externally computed) maximal likelihood estimates """
-function loadmles()
-  parmat = matread(joinpath(datadir, "parameters.mat"))
-  parms  = vec(parmat["para"])
-  y0     = vec(parmat["y0_m16"])
-  parms, y0
-end
-
-""" load the patient data and return a vector of Arrays, each of shape 4x31 denoting the respective concentration or NaN if not available """
-function pfizerdata()
-  data = readtable(joinpath(datadir,"pfizer_normal.txt"), separator='\t')
-  results = Vector()
-  map(groupby(data, 6)) do subject
-    p = fill(NaN, 4, 31)
-    for measurement in eachrow(subject)
-      # map days to 1-31
-      day = (measurement[1]+30)%31+1
-      for i = 1:4
-        val = measurement[i+1]
-        p[i,day] = isa(val, Number) ? val : NaN
-      end
-    end
-    push!(results,p)
-  end
-  results
 end

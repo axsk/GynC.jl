@@ -33,17 +33,16 @@ function likelihoods(chain::AbstractMatrix, data::Vector{Matrix}, sigma::Real)
   likelihoods
 end
 
-function reweight(c::WeightedChain)
+function reweight!(c::WeightedChain)
   w = c.weights
   L = c.likelihoods
   K = size(L,1)
   M = size(L,2)
-  wn = similar(w)
   norm = [sum([w[j] * L[j,m] for j=1:K]) for m=1:M]
   for k=1:K
-    wn[k] = w[k] / M * sum([L[k,m] / norm[m] for m=1:M])
+    w[k] = w[k] / M * sum([L[k,m] / norm[m] for m=1:M])
   end
-  wn
+  w
 end
 
 ### MergedChain

@@ -28,16 +28,27 @@ function startmcmc(subj::Subject, iters::Int, chains::Int, path::AbstractString,
     j["tune"] = sim.model.samplers[1].tune
     j["subj"] = subj
     j["modelconfig"] = c
+    j["thin"] = thin
   end
   sim
 end
 
-function continuemcmc(path::AbstractString, iters::Int; thin=100)
-  local last, tune, subj
+function continuemcmc(path::AbstractString, iters::Int; thin=100, maxiters=Inf)
+  local last, tune, subj, nsampled
   jldopen(path, "r") do j
     last = j["chains"][end, :, :]
     tune = read(j["tune"])
     subj = read(j["subj"])
+    nsampled = size(j["chains"],1)
+    try
+      thin = read(j["thin"])
+    end
+  end
+
+  iters = min(iters, maxiters-nsampled)
+  if iters <= 0
+    println("reached maxiters, returning")
+    return
   end
 
   c = ModelConfig(subj)
