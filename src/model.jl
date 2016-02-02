@@ -19,7 +19,7 @@ type ModelConfig
   parms_bound::Vector # upper bound of flat parameter prior
 end
 
-ModelConfig(person::Int=1; kwargs...) = ModelConfig(pfizerdata()[person]; kwargs...)
+ModelConfig(s::Subject; kwargs...) = ModelConfig(data(s); kwargs...)
 
 function ModelConfig(data::Matrix; sigma_rho=0.1, sigma_y0=1, parms_bound=5)
   isa(parms_bound, Real) && (parms_bound = parms_bound * mleparms)

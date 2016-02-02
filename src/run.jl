@@ -1,6 +1,4 @@
-const chunksize = 1
-
-typealias Subject Int
+const hdf_chunksize = 1_000
 
 scaledprop(relprop::Float64, n::Int) = log(1+(relprop^2)) * eye(n)
 
@@ -23,7 +21,7 @@ function startmcmc(subj::Subject, iters::Int, chains::Int, path::AbstractString,
 
   mkpath(dirname(path))
   jldopen(path, "w") do j
-    d_create(j.plain, "chains", Float64, ((size(sim.value,1),115,chains),(-1,115,-1)), "chunk", (chunksize,115,1))
+    d_create(j.plain, "chains", Float64, ((size(sim.value,1),115,chains),(-1,115,-1)), "chunk", (hdf_chunksize,115,1))
     j["chains"][:,:,:] = sim.value
     j["tune"] = sim.model.samplers[1].tune
     j["subj"] = subj
@@ -33,22 +31,27 @@ function startmcmc(subj::Subject, iters::Int, chains::Int, path::AbstractString,
   sim
 end
 
-function continuemcmc(path::AbstractString, iters::Int; thin=100, maxiters=Inf)
-  local last, tune, subj, nsampled
+nsamples(path) = jldopen(j->size(j["chains"],1), path, "r")
+
+function run(path::AbstractString; batchiters=100_000, maxiters=1_000_000, subj::Union{Subject, Void}=nothing)
+  if !isfile(path)
+    subj == nothing && error("not given any subject")
+    startmcmc(subj, batchiters, 1, path)
+  end
+
+  while iters = min(batchiters, maxiters-nsamples(path)) > 0
+    continuemcmc(path, iters)
+  end
+end
+
+function continuemcmc(path::AbstractString, iters::Int)
+  local last, tune, subj, thin
+
   jldopen(path, "r") do j
     last = j["chains"][end, :, :]
     tune = read(j["tune"])
     subj = read(j["subj"])
-    nsampled = size(j["chains"],1)
-    try
-      thin = read(j["thin"])
-    end
-  end
-
-  iters = min(iters, maxiters-nsampled)
-  if iters <= 0
-    println("reached maxiters, returning")
-    return
+    thin = read(j["thin"])
   end
 
   c = ModelConfig(subj)
@@ -60,7 +63,6 @@ function continuemcmc(path::AbstractString, iters::Int; thin=100, maxiters=Inf)
   inits = [Dict{Symbol,Any}(:sparms => vec(last[1, 1:82, chain]), :y0 => vec(last[1, 83:115, chain]), :data => c.data) for chain in 1:size(last,3)]
   m.samplers[1].tune = tune
 
-  #debug("continuing run",Dict(:inits => size(inits)))
   sim = mcmc(m, inp, inits, iters, verbose=true, thin=thin)
 
   jldopen(path, "r+") do j
