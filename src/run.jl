@@ -1,8 +1,9 @@
 const hdf_chunksize = 1_000
+const relprop = 0.1 # relative standard deviation of proposal density
 
 scaledprop(relprop::Float64, n::Int) = log(1+(relprop^2)) * eye(n)
 
-function startmcmc(subj::Subject, iters::Int, chains::Int, path::AbstractString, relprop::Float64=0.1; thin=100)
+function startmcmc(subj::Subject, iters::Int, path::AbstractString; thin=100)
   c = ModelConfig(subj)
 
   # create sampler
@@ -13,15 +14,15 @@ function startmcmc(subj::Subject, iters::Int, chains::Int, path::AbstractString,
   m = model(c)
   setsamplers!(m, samplers)
   inp = Dict{Symbol,Any}()
-  inits = [Dict(:y0 => mley0, :sparms => mleparms[sampleparms], :data => c.data) for i=1:chains] |> Array{Dict{Symbol,Any}}
+  inits = [Dict(:y0 => mley0, :sparms => mleparms[sampleparms], :data => c.data)] |> Array{Dict{Symbol,Any}}
   
   # initial run
   #debug("starting initial run", Dict(:inits => size(inits)))
-  sim = mcmc(m, inp, inits, iters, verbose=true, chains=chains, thin=thin)
+  sim = mcmc(m, inp, inits, iters, verbose=true, chains=1, thin=thin)
 
   mkpath(dirname(path))
   jldopen(path, "w") do j
-    d_create(j.plain, "chains", Float64, ((size(sim.value,1),115,chains),(-1,115,-1)), "chunk", (hdf_chunksize,115,1))
+    d_create(j.plain, "chains", Float64, ((size(sim.value,1),115,1),(-1,115,-1)), "chunk", (hdf_chunksize,115,1))
     j["chains"][:,:,:] = sim.value
     j["tune"] = sim.model.samplers[1].tune
     j["subj"] = subj
@@ -33,30 +34,31 @@ end
 
 nsamples(path) = jldopen(j->size(j["chains"],1), path, "r")
 
-function run(path::AbstractString; batchiters=100_000, maxiters=1_000_000, subj::Union{Subject, Void}=nothing)
+function run(path::AbstractString; batchiters=100_000, maxiters=10_000_000, subj::Union{Subject, Void}=nothing, thin=100)
   if !isfile(path)
     subj == nothing && error("not given any subject")
-    startmcmc(subj, batchiters, 1, path)
+    startmcmc(subj, batchiters, path, thin=thin)
   end
 
-  while iters = min(batchiters, maxiters-nsamples(path)) > 0
+  while (iters = min(batchiters, maxiters-nsamples(path)*thin)) > 0
     continuemcmc(path, iters)
   end
 end
 
 function continuemcmc(path::AbstractString, iters::Int)
-  local last, tune, subj, thin
+  local last, tune, subj, thin, c
 
   jldopen(path, "r") do j
     last = j["chains"][end, :, :]
     tune = read(j["tune"])
     subj = read(j["subj"])
     thin = read(j["thin"])
+    c = read(j["modelconfig"])
   end
 
-  c = ModelConfig(subj)
   d = size(last, 2)
-  samplers = [AMM([:sparms, :y0], eye(d,d), adapt=:all)]
+  prop = scaledprop(relprop, length(sampledmles))
+  samplers = [AMM([:sparms, :y0], prop, adapt=:all)]
   m = model(c)
   setsamplers!(m, samplers)
   inp = Dict{Symbol,Any}()

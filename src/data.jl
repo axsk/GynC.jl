@@ -1,4 +1,3 @@
-
 """ load the (externally computed) maximal likelihood estimates """
 function loadmles()
   parmat = matread(joinpath(datadir, "parameters.mat"))
@@ -28,9 +27,42 @@ end
 
 type Subject
   dataset::Symbol
-  id::Integer
+  id::Int
 end
 
+Subj(id::Int) = Subject(:pfizer, i)
+
 function data(s::Subject)
-  pfizerdata()[s.id]
+  if s.dataset == :pfizer
+    pfizerdata()[s.id]
+  elseif s.dataset == :lausanne
+    lausannedata(s.id)
+  else
+    error("dataset not recognized")
+  end
 end
+
+filename(s::Subject) = "$(s.dataset)$(s.id)"
+
+function lausannedata(caseid::Int)
+  dir = joinpath(datadir,"lausaunne")
+  daynames = map(symbol, vcat(["_$i" for i = 16:-1:1], ["x$i" for i=0:15]))
+  hormonefile = ["lh.csv", "fsh.csv", "oestr.csv", "prog.csv"]
+
+  p = fill(NaN, 4, 31)
+
+  for h in 1:4 
+    data = readtable(joinpath(dir,hormonefile[h]), separator=',')
+    y = findfirst(data[:Cas].=="$caseid")
+    for day in 1:32
+      val = data[y,daynames[day]]
+      day = (day-1)%31+1 # limex expects only 31 days 
+      if isa(val, Number) 
+        p[h,day] = val
+      end
+    end
+  end
+  p
+end
+  
+
