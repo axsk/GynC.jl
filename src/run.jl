@@ -36,7 +36,7 @@ nsamples(path) = jldopen(j->size(j["chains"],1), path, "r")
 
 function run(path::AbstractString; batchiters=100_000, maxiters=10_000_000, subj::Union{Subject, Void}=nothing, thin=100)
   if !isfile(path)
-    subj == nothing && error("not given any subject")
+    isa(subj, Subject) || Base.error("not given any subject")
     startmcmc(subj, batchiters, path, thin=thin)
   end
 

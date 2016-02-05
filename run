@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -n 24
+#SBATCH -n 45
 #SBATCH -c 1
 
 #SBATCH -A htc
@@ -8,14 +8,14 @@
 #SBATCH -J GyncMCMC
 
 ##SBATCH --error=job.%J.err 
-#SBATCH --output=out/job.%j.out
+#SBATCH --output=out/log/slurm%j.log
 
 # compile modules
 
 path=out/fac5err10
 iters=100_000
 thin=100
-maxiters=1_000_000
+maxiters=10_000_000
 
 echo saving to $path
 
@@ -25,26 +25,11 @@ echo compiling modules
 srun -n1 -N1 ~/bin/htc030/julia -e \
   "using Gync;"
 
-for s in {6..13}; do
-  for c in {1..3}; do
-    (
-    filename=$path/$s\_$c.jld
-    for i in {1..100}; do
-      echo starting run $i for $filename
-      if [ ! -e "$filename" ]; then
-        srun -n1 -N1 --exclusive \
-          ~/bin/htc030/julia -e  \
-          "using Gync; Gync.startmcmc($s,$iters,1,\"$filename\",thin=$thin)" &
-      else
-        srun -n1 -N1 --exclusive \
-          ~/bin/htc030/julia -e  \
-          "using Gync; Gync.continuemcmc(\"$filename\", $iters,thin=$thin)" &
-      fi
-      wait
-    done
-    echo completed $filename
-    )&
-  done
+for s in {1..45}; do
+    filename=$path/lausanne$s.jld
+    srun -n1 -N1 --exclusive \
+      ~/bin/htc030/julia -e  \
+      "using Gync; Gync.run(\"$filename\", batchiters=$iters, maxiters=$maxiters, thin=$thin, subj=Gync.Subject(:lausanne, $s))" &
 done
 
 wait
