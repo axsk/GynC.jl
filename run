@@ -1,18 +1,17 @@
 #!/bin/bash
 
-#SBATCH -n 45
+#SBATCH -n 13
 #SBATCH -c 1
 
 #SBATCH -A htc
 #SBATCH -p HTC030
 #SBATCH -J GyncMCMC
 
-##SBATCH --error=job.%J.err 
 #SBATCH --output=out/log/slurm%j.log
 
 # compile modules
 
-path=out/fac5err10
+path=out/fac3err5
 iters=100_000
 thin=100
 maxiters=10_000_000
@@ -25,11 +24,14 @@ echo compiling modules
 srun -n1 -N1 ~/bin/htc030/julia -e \
   "using Gync;"
 
-for s in {1..45}; do
-    filename=$path/lausanne$s.jld
+for s in {1..13}; do
+    filename=$path/pfizer$s.jld
     srun -n1 -N1 --exclusive \
       ~/bin/htc030/julia -e  \
-      "using Gync; Gync.run(\"$filename\", batchiters=$iters, maxiters=$maxiters, thin=$thin, subj=Gync.Subject(:lausanne, $s))" &
+      "using Gync; 
+    c=Gync.ModelConfig(Gync.Subject(:pfizer, $s), 
+      sigma_y0=3, sigma_rho=0.05, parms_bound=3)
+    Gync.run(\"$filename\", config=c, batchiters=$iters, maxiters=$maxiters, thin=$thin)" &
 done
 
 wait
