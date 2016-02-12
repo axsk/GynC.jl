@@ -49,7 +49,7 @@ function model(c::ModelConfig)
       false))
 end
 
-""" likelihood (up to proport.) for the parameters given the patientdata """
+""" loglikelihood (up to proport.) for the parameters given the patientdata """
 function llh(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector{Float64}, sigma::Real)
   tspan = Array{Float64}(collect(1:31))
   y = gync(y0, tspan, parms)[MEASURED,:]
@@ -73,7 +73,6 @@ cachedllh = cache(llh,3)
 """ componentwise squared relative difference of two matrices """
 function squaredrelativeerror(data1::Matrix, data2::Matrix)
   diff = data1 - data2
-  # TODO: divide by data1 or data2?
-  rdiff = diff ./ data2
-  sre   = sumabs2(rdiff[!isnan(rdiff)]) / length(!isnan(rdiff))
+  rdiff = diff ./ data1
+  sre   = sumabs2(rdiff[!isnan(rdiff)])
 end
