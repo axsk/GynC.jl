@@ -26,9 +26,11 @@ end
 function likelihoods(chain::AbstractMatrix, data::Vector{Matrix}, sigma::Real)
   K = size(chain, 1)
   M = length(data)
-  likelihoods = Matrix(K,M)
-  for k = 1:K, m = 1:M
-    likelihoods[k,m] = likelihood(data[m], chain[k,:]|>vec, sigma)
+  likelihoods = SharedArray(Float64,K,M)
+  @sync @parallel for k = 1:K
+    for m = 1:M
+      likelihoods[k,m] = likelihood(data[m], chain[k,:]|>vec, sigma)
+    end
   end
   likelihoods
 end
