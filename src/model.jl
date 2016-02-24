@@ -51,7 +51,7 @@ end
 
 """ loglikelihood (up to proport.) for the parameters given the patientdata """
 function llh(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector{Float64}, sigma::Real)
-  tspan = Array{Float64}(collect(1:31))
+  tspan = Array{Float64}(collect(0:30))
   y = gync(y0, tspan, parms)[MEASURED,:]
   if any(isnan(y)) > 0
     #Base.warn("encountered nan in gync result")
@@ -73,6 +73,6 @@ cachedllh = cache(llh,3)
 """ componentwise squared relative difference of two matrices """
 function squaredrelativeerror(data1::Matrix, data2::Matrix)
   diff = data1 - data2
-  rdiff = diff ./ data1
-  sre   = sumabs2(rdiff[!isnan(rdiff)])
+  reldiff = diff ./ data1
+  return sumabs2(reldiff[!isnan(reldiff)])
 end
