@@ -26,20 +26,29 @@ function ModelConfig(data::Matrix; sigma_rho=0.1, sigma_y0=1, parms_bound=5)
   ModelConfig(data, sigma_rho, sigma_y0, parms_bound)
 end
 
-""" Return the Bayesian Model with priors y0 ~ LN(y0), parms' ~ LN(parms'). Here parms' denotes the sampled parameters, while `parms` are all parameters. """
+function gaussianmixture(y::Matrix)
+   covariances = mapslices(std, y, 2)
+   normals = mapslices(yt->MvNormal(yt, covariances), y, 1)
+   MixtureModel(normals)
+end
+
+""" construct the mamba model """
 function model(c::ModelConfig)
 
-  tparms = copy(mleparms)
+  allparms = copy(mleparms)
+  mlesolution = gync(mley0, collect(1:31.), mleparms)
 
   Model(
-    y0 = Stochastic(1,
-      () -> independentmixtureprior(mlegync(), c.sigma_y0)), 
+    logy0 = Stochastic(1,
+      () -> gaussianmixture(log(mlesolution)), false),
+
+    y0 = Logical(1, (logy0) -> exp(y0)),
       
     sparms = Stochastic(1,
       () -> UnivariateDistribution[Truncated(Flat(), 0, parbound) for parbound in c.parms_bound[sampleparms]]),
       
     parms = Logical(1,
-      (sparms) -> (tparms[sampleparms] = sparms; tparms), false),
+      (sparms) -> (allparms[sampleparms] = sparms; allparms), false),
       
     data = Stochastic(2,
       (y0, parms) -> DensityDistribution(

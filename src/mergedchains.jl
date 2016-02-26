@@ -40,7 +40,7 @@ function reweight!(c::WeightedChain)
   L = c.likelihoods
   K = size(L,1)
   M = size(L,2)
-  norm = [sum([w[j] * L[j,m] for j=1:K]) for m=1:M]
+  norm = [sum([w[k] * L[k,m] for k=1:K]) for m=1:M]
   for k=1:K
     w[k] = w[k] / M * sum([L[k,m] / norm[m] for m=1:M])
   end
