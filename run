@@ -11,7 +11,7 @@
 
 # compile modules
 
-path=out/fac3err5
+path=out/0224
 iters=100_000
 thin=100
 maxiters=10_000_000
@@ -24,13 +24,13 @@ echo compiling modules
 srun -n1 -N1 ~/bin/htc030/julia -e \
   "using Gync;"
 
-for s in {1..13}; do
-    filename=$path/pfizer$s.jld
+for s in {1..45}; do
+    filename=$path/lausanne$s.jld
     srun -n1 -N1 --exclusive \
       ~/bin/htc030/julia -e  \
       "using Gync; 
-    c=Gync.ModelConfig(Gync.Subject(:pfizer, $s), 
-      sigma_y0=3, sigma_rho=0.05, parms_bound=3)
+    c=Gync.ModelConfig(Gync.Subject(:lausanne, $s), 
+      sigma_y0=2, sigma_rho=1, parms_bound=5)
     Gync.run(\"$filename\", config=c, batchiters=$iters, maxiters=$maxiters, thin=$thin)" &
 done
 
