@@ -6,10 +6,9 @@ using Lumberjack
 export runsims, benchmark, script
 
 include("utils.jl")
-include("priors.jl")
 include("data.jl")
 include("model.jl")
 include("run.jl")
-include("mergedchains.jl")
+include("reweight.jl")
 
 end

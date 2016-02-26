@@ -1,4 +1,4 @@
-### WeightedChain 
+### WeightedChain
 
 type WeightedChain
   chain::AbstractMatrix
@@ -46,28 +46,3 @@ function reweight!(c::WeightedChain)
   end
   w
 end
-
-### MergedChain
-
-type MergedChain{T<:Real} <: AbstractMatrix{T}
-  chains::Vector{Matrix{T}}
-  
-  function MergedChain{T}(chains::Vector{Matrix{T}})
-    all([size(c) for c in chains] .== size(chains[1])) || warn("chains dont have same size")
-    new(chains)
-  end
-end
-
-mergedchain(chains...) = MergedChain{Float64}(Vector{Matrix{Float64}}(chains...))
-
-chainlength(mc::MergedChain) = size(mc.chains[1], 1)
-nchains(mc::MergedChain) = length(mc.chains)
-
-Base.size(mc::MergedChain) = (nchains(mc) * chainlength(mc), size(mc.chains[1], 2))
-
-function Base.getindex(mc::MergedChain, i::Int, j::Int) 
-  chain = floor((i-1) / chainlength(mc)) + 1 |> Int
-  index = ((i-1) % chainlength(mc) + 1)
-  mc.chains[chain][index, j]
-end
-
