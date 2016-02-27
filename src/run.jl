@@ -1,28 +1,27 @@
-const hdf_chunksize = 1_000
-const relprop = 0.1 # relative standard deviation of proposal density
+function runsim(c, inity0, initparms, iters, thin, customtune=nothing)
+  m = model(c)
 
-nsamples(path) = jldopen(j->size(j["chains"],1), path, "r")
+  relprop = 0.1
+  nparms = length(sampledmles)
+  prop = log(1+(relprop^2)) * eye(nparms) # TODO: check
 
-scaledprop(relprop::Float64, n::Int) = log(1+(relprop^2)) * eye(n)
+  setsamplers!(m, [AMM([:sparms, :y0], prop, adapt=:all)])
+
+  inp = Dict{Symbol,Any}()
+  inits = [Dict{Symbol,Any}(:y0 => inity0, :sparms => initparms, :data => c.data)]
+
+  # TODO: fix this hack
+  customtune != nothing && settune!(m, [customtune])
+  sim = mcmc(m, inp, inits, iters, verbose=true, chains=1, thin=thin)
+end
 
 function startmcmc(c::ModelConfig, iters::Int, path::AbstractString, thin=100)
-  # create sampler
-  prop = scaledprop(relprop, length(sampledmles))
-  samplers = [AMM([:sparms, :y0], prop, adapt=:all)]
- 
-  # create model
-  m = model(c)
-  setsamplers!(m, samplers)
-  inp = Dict{Symbol,Any}()
-  inits = [Dict(:y0 => mley0, :sparms => mleparms[sampleparms], :data => c.data)] |> Array{Dict{Symbol,Any}}
-  
-  # initial run
-  #debug("starting initial run", Dict(:inits => size(inits)))
-  sim = mcmc(m, inp, inits, iters, verbose=true, chains=1, thin=thin)
+  sim = runsim(c, mley0, mleparms[sampleparms], iters)
 
   mkpath(dirname(path))
   jldopen(path, "w") do j
-    d_create(j.plain, "chains", Float64, ((size(sim.value,1),115,1),(-1,115,-1)), "chunk", (hdf_chunksize,115,1))
+    hdfchunksize = 1000
+    d_create(j.plain, "chains", Float64, ((size(sim.value,1),115,1),(-1,115,-1)), "chunk", (hdfchunksize,115,1))
     j["chains"][:,:,:] = sim.value
     j["tune"] = sim.model.samplers[1].tune
     j["modelconfig"] = c
@@ -41,16 +40,10 @@ function continuemcmc(path::AbstractString, iters::Int)
     c = read(j["modelconfig"])
   end
 
-  d = size(last, 2)
-  prop = scaledprop(relprop, length(sampledmles))
-  samplers = [AMM([:sparms, :y0], prop, adapt=:all)]
-  m = model(c)
-  setsamplers!(m, samplers)
-  inp = Dict{Symbol,Any}()
-  inits = [Dict{Symbol,Any}(:sparms => vec(last[1, 1:82, chain]), :y0 => vec(last[1, 83:115, chain]), :data => c.data) for chain in 1:size(last,3)]
-  m.samplers[1].tune = tune
+  lasty0 = last[1, 83:115, chain] |> vec
+  lastthetha = last[1, 1:82, chain] |> vec
 
-  sim = mcmc(m, inp, inits, iters, verbose=true, thin=thin)
+  sim = runsim(c, lasty0, lasttheta, iters, thin, tune)
 
   jldopen(path, "r+") do j
     s = size(j["chains"])
@@ -61,6 +54,8 @@ function continuemcmc(path::AbstractString, iters::Int)
   end
   sim
 end
+
+nsamples(path) = jldopen(j->size(j["chains"],1), path, "r")
 
 function run(path::AbstractString; batchiters=100_000, maxiters=10_000_000, config::Union{ModelConfig, Void}=nothing, thin=100)
   if !isfile(path)
