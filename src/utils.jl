@@ -66,16 +66,24 @@ const fortranpath = joinpath(dirname(@__FILE__),"..","fortran","GynC.so")
 
 """ Wrapper to the LIMEX solver for the GynC model 
 solve the model for the times t given initial condition y0 and parameters parms, and store the result in y"""
-function gync(y0::Vector{Float64}, tspan::Vector{Float64}, Parms::Vector{Float64})
-  n = length(y0)
+function gync(y0::Vector{Float64}, tspan::Vector{Float64}, parms::Vector{Float64})
+  n = 33
   m = length(tspan)
   y = Array{Float64}(n,m)
 
+  @assert length(y0)==33
+  @assert length(parms)==114
+
   ccall((:limstep_, fortranpath), Ptr{Array{Float64,2}},
     (Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Int64}, Ptr{Int64}, Ptr{Float64}),
-    y, copy(y0), tspan, &n, &m, Parms)
+    y, copy(y0), tspan, &n, &m, parms)
   y
 end
+
+function gync(y0::Vector{Float64}, tspan::AbstractVector, parms::Vector{Float64})
+  gync(y0, collect(tspan), parms)
+end
+
 
 ### MergedChain
 
