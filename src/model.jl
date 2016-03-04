@@ -30,8 +30,8 @@ ModelConfig(data, sigma_rho=0.1, sigma_y0=1, parms_bound::Real=5) =
   ModelConfig(data, sigma_rho, sigma_y0, parms_bound * refparms)
 
 function gaussianmixture(y::Matrix)
-   covariances = mapslices(std, y, 2)
-   normals = mapslices(yt->MvNormal(yt, covariances), y, 1)
+   covariances = mapslices(std, y, 2) |> vec
+   normals = mapslices(yt->MvNormal(yt, covariances), y, 1) |> vec
    MixtureModel(normals)
 end
 
