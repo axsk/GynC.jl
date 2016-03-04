@@ -16,10 +16,10 @@ function likelihood(data::Matrix, sample::Vector, sigma::Real)
 end
 
 function sampletoparms(sample::Vector)
-  parms = copy(mleparms)
-  parms[sampleparms] = sample[1:length(sampleparms)]
-  y0 = sample[length(sampleparms)+1:end]
-  parms, y0
+  np = length(sampleparms)
+  allparms = allparms(sample[1:np])
+  y0 = sample[np+1:end]
+  allparms, y0
 end
 
 """ compute the likelihood matrix for given chains, data, sigma) """

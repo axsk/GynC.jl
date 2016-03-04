@@ -1,11 +1,3 @@
-""" load the (externally computed) maximal likelihood estimates """
-function loadmles()
-  parmat = matread(joinpath(datadir, "parameters.mat"))
-  parms  = vec(parmat["para"])
-  y0     = vec(parmat["y0_m16"])
-  parms, y0
-end
-
 """ load the patient data and return a vector of Arrays, each of shape 4x31 denoting the respective concentration or NaN if not available """
 function pfizerdata()
   data = readtable(joinpath(datadir,"pfizer_normal.txt"), separator='\t')
@@ -29,8 +21,6 @@ type Subject
   dataset::Symbol
   id::Int
 end
-
-Subj(id::Int) = Subject(:pfizer, i)
 
 function data(s::Subject)
   if s.dataset == :pfizer

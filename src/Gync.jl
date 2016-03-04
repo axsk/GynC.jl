@@ -1,9 +1,13 @@
 module Gync
 
-using JLD, HDF5, DataFrames, MAT, Mamba, Distributions
-using Lumberjack
+using Mamba, Distributions
+using JLD, HDF5
+using DataFrames
+#using Lumberjack
 
-export runsims, benchmark, script
+export runsim, ModelConfig, Subject
+
+const datadir = joinpath(dirname(@__FILE__), "..", "data")
 
 include("utils.jl")
 include("data.jl")

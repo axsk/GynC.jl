@@ -1,22 +1,22 @@
-function runsim(c, inity0, initparms, iters, thin, customtune=nothing)
+function runsim(c, iters, inity0=refy0, initparms=refparms, customtune=nothing; thin=1)
   m = model(c)
 
   relprop = 0.1
-  nparms = length(sampledmles)
+  nparms = length(inity0) + length(initparms)
   prop = log(1+(relprop^2)) * eye(nparms) # TODO: check
 
   setsamplers!(m, [AMM([:sparms, :y0], prop, adapt=:all)])
 
   inp = Dict{Symbol,Any}()
-  inits = [Dict{Symbol,Any}(:y0 => inity0, :sparms => initparms, :data => c.data)]
+  inits = [Dict{Symbol,Any}(:logy0 => log(inity0), :sparms => initparms, :data => c.data)]
 
   # TODO: fix this hack
   customtune != nothing && settune!(m, [customtune])
   sim = mcmc(m, inp, inits, iters, verbose=true, chains=1, thin=thin)
 end
 
-function startmcmc(c::ModelConfig, iters::Int, path::AbstractString, thin=100)
-  sim = runsim(c, mley0, mleparms[sampleparms], iters)
+function startmcmc(c::ModelConfig, iters::Int, thin::Int=100, path::AbstractString="")
+  sim = runsim(c, refy0, refparms, iters)
 
   mkpath(dirname(path))
   jldopen(path, "w") do j
