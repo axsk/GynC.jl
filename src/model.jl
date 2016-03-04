@@ -55,7 +55,11 @@ function model(c::ModelConfig)
         size(c.data),
         data -> cachedllh(data, parms.value, y0.value, c.sigma_rho), 
         log=true),
-      false))
+      false),
+
+    loglikelihood = Logical(1,
+      (y0, parms, data) -> cachedllh(data, parms, y0, c.sigma_rho))
+    )
 end
 
 """ loglikelihood (up to proport.) for the parameters given the patientdata """
