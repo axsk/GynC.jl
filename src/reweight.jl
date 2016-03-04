@@ -16,7 +16,7 @@ function likelihood(data::Matrix, sample::Vector, sigma::Real)
 end
 
 function sampletoparms(sample::Vector)
-  np = length(sampleparms)
+  np = length(sampledinds)
   allparms = allparms(sample[1:np])
   y0 = sample[np+1:end]
   allparms, y0

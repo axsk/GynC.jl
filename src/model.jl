@@ -1,21 +1,21 @@
 # indices for measured variables: LH, FSH, E2, P4
-const MEASURED = [2,7,24,25]
-const hillinds = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 59, 65, 95, 98, 101, 103]
-const sampleparms = deleteat!(collect(1:103), hillinds)
+const measuredinds = [2,7,24,25]
+const hillinds     = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 59, 65, 95, 98, 101, 103]
+const sampledinds  = deleteat!(collect(1:103), hillinds)
 
-const refy0    = include("const/refy0.jl")
+const refy0       = include("const/refy0.jl")
 const refallparms = include("const/refparms.jl")
-const refparms = refallparms[sampleparms]
+const refparms    = refallparms[sampledinds]
 
 function allparms(parms::Vector)
   p = copy(refallparms)
-  p[sampleparms] = parms
+  p[sampledinds] = parms
   p
 end
 
 const speciesnames   = include("const/speciesnames.jl")
-const parameternames = include("const/parameternames.jl")
-const samplednames = [parameternames[sampleparms]; speciesnames]
+const parameternames = include("const/parameternames.jl")[sampledinds]
+const samplednames   = [parameternames; speciesnames]
 
 type ModelConfig
   data::Matrix      # measurements
@@ -41,7 +41,7 @@ function model(c::ModelConfig)
     logy0 = Stochastic(1,
       () -> gaussianmixture(log(referencesolution())), false),
 
-    y0 = Logical(1, (logy0) -> exp(y0)),
+    y0 = Logical(1, (logy0) -> exp(logy0)),
       
     parms = Stochastic(1,
       () -> UnivariateDistribution[Truncated(Flat(), 0, parbound) for parbound in c.parms_bound]),
@@ -53,8 +53,7 @@ function model(c::ModelConfig)
         log=true),
       false),
 
-    loglikelihood = Logical(1,
-      (y0, parms, data) -> cachedllh(data, parms, y0, c.sigma_rho))
+    loglikelihood = Logical((y0, parms, data) -> cachedllh(data.value, parms.value, y0.value, c.sigma_rho))
     )
 end
 
@@ -70,7 +69,7 @@ end
 """ loglikelihood (up to proport.) for the parameters given the patientdata """
 function llh(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector{Float64}, sigma::Real)
   tspan = Array{Float64}(collect(0:30))
-  y = gync(y0, tspan, parms)[MEASURED,:]
+  y = gync(y0, tspan, parms)[measuredinds,:]
   if any(isnan(y)) > 0
     #Base.warn("encountered nan in gync result")
     #try
