@@ -77,11 +77,6 @@ function gync(y0::Vector{Float64}, tspan::Vector{Float64}, Parms::Vector{Float64
   y
 end
 
-function mlegync(tspan::Vector{Float64}=collect(1:31.))
-  parms, y0 = loadmles()
-  gync(y0, tspan, parms)
-end
-
 ### MergedChain
 
 """ memory efficient structure to represent the merged chain """

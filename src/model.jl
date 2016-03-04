@@ -34,13 +34,11 @@ end
 
 """ construct the mamba model """
 function model(c::ModelConfig)
-
   allparms = copy(mleparms)
-  mlesolution = gync(mley0, collect(1:31.), mleparms)
 
   Model(
     logy0 = Stochastic(1,
-      () -> gaussianmixture(log(mlesolution)), false),
+      () -> gaussianmixture(log(referencesolution())), false),
 
     y0 = Logical(1, (logy0) -> exp(y0)),
       
@@ -60,6 +58,16 @@ function model(c::ModelConfig)
     loglikelihood = Logical(1,
       (y0, parms, data) -> cachedllh(data, parms, y0, c.sigma_rho))
     )
+end
+
+function referencesolution(resolution=1)
+  parms, y0 = loadmles()
+  sol = gync(y0, collect(1:resolution:31.), parms)
+  # since we get a (small) negative value for OvF, impeding the log transformation for the prior, set this to the next minimal value
+  for i in 1:size(sol,1)
+    sol[i, sol[i,:] .<= 0] = minimum(sol[i, sol[i,:] .> 0])
+  end
+  sol
 end
 
 """ loglikelihood (up to proport.) for the parameters given the patientdata """
