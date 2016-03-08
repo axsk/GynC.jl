@@ -96,3 +96,17 @@ function squaredrelativeerror(data1::Matrix, data2::Matrix)
   reldiff = diff ./ data1
   return sumabs2(reldiff[!isnan(reldiff)])
 end
+
+function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; thin=1, relprop=0.1)
+  m = model(c)
+
+  nparms = length(inity0) + length(initparms)
+  prop = log(1+(relprop^2)) * eye(nparms) # TODO: check
+
+  setsamplers!(m, [AMM([:parms, :logy0], prop, adapt=:all)])
+
+  inp = Dict{Symbol,Any}()
+  inits = [Dict{Symbol,Any}(:logy0 => log(inity0), :parms => initparms, :data => c.data)]
+
+  sim = mcmc(m, inp, inits, iters, verbose=true, chains=1, thin=thin)
+end

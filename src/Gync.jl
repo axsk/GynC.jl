@@ -12,7 +12,7 @@ const datadir = joinpath(dirname(@__FILE__), "..", "data")
 include("utils.jl")
 include("data.jl")
 include("model.jl")
-include("run.jl")
+include("io.jl")
 include("reweight.jl")
 
 end
