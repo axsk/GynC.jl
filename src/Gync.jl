@@ -5,7 +5,7 @@ using JLD, HDF5
 using DataFrames
 #using Lumberjack
 
-export runsim, ModelConfig, Subject
+export mcmc, ModelConfig, Subject
 
 const datadir = joinpath(dirname(@__FILE__), "..", "data")
 

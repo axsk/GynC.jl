@@ -62,7 +62,7 @@ function samplemean(chains::Vector{Mamba.ModelChains})
 end
 
 
-const fortranpath = joinpath(dirname(@__FILE__),"..","fortran","GynC.so") 
+const fortranpath = joinpath(dirname(@__FILE__),"..","deps","limex","GynC.so")
 
 """ Wrapper to the LIMEX solver for the GynC model 
 solve the model for the times t given initial condition y0 and parameters parms, and store the result in y"""
