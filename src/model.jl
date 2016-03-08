@@ -108,5 +108,5 @@ function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; thin=1, r
   inp = Dict{Symbol,Any}()
   inits = [Dict{Symbol,Any}(:logy0 => log(inity0), :parms => initparms, :data => c.data)]
 
-  sim = mcmc(m, inp, inits, iters, verbose=true, chains=1, thin=thin)
+  sim = Mamba.mcmc(m, inp, inits, iters, verbose=true, chains=1, thin=thin)
 end

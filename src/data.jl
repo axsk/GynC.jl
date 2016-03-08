@@ -18,21 +18,14 @@ function pfizerdata()
 end
 
 type Subject
-  dataset::Symbol
-  id::Int
+  data::Array{Float64}
+  id::Any
 end
 
-function data(s::Subject)
-  if s.dataset == :pfizer
-    pfizerdata()[s.id]
-  elseif s.dataset == :lausanne
-    lausannedata(s.id)
-  else
-    error("dataset not recognized")
-  end
-end
+data(s::Subject) = s.data
 
-filename(s::Subject) = "$(s.dataset)$(s.id)"
+Lausanne(id::Int) = Subject(lausannedata(id), (:lausanne, id))
+Pfizer(id::Int)   = Subject(pfizerdata(), (:pfizer, id))
 
 function lausannedata(caseid::Int)
   dir = joinpath(datadir,"lausaunne")
