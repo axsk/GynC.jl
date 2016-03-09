@@ -97,7 +97,7 @@ function squaredrelativeerror(data1::Matrix, data2::Matrix)
   return sumabs2(reldiff[!isnan(reldiff)])
 end
 
-function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; thin=1, relprop=0.1)
+function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; relprop=0.1, mcmcargs...)
   m = model(c)
 
   nparms = length(inity0) + length(initparms)
@@ -108,5 +108,5 @@ function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; thin=1, r
   inp = Dict{Symbol,Any}()
   inits = [Dict{Symbol,Any}(:logy0 => log(inity0), :parms => initparms, :data => c.data)]
 
-  sim = Mamba.mcmc(m, inp, inits, iters, verbose=true, chains=1, thin=thin)
+  sim = Mamba.mcmc(m, inp, inits, iters; mcmcargs...)
 end
