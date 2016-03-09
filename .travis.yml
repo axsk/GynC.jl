@@ -1,4 +1,6 @@
 language: julia
 script:
  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
- - julia -e 'Pkg.clone(pwd()); Pkg.build("GynC"); Pkg.test("GynC")'
+ - julia -e 'Pkg.clone(pwd()); Pkg.build("GynC"); Pkg.test("GynC", coverage=true)'
+after_success:
+ - julia -e 'cd(Pkg.dir("GynC")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
