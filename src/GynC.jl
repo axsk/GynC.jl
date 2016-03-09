@@ -5,7 +5,11 @@ using JLD, HDF5
 using DataFrames
 #using Lumberjack
 
-export mcmc, ModelConfig, Lausanne, Pfizer
+import Mamba.mcmc
+
+export mcmc, batch
+export ModelConfig, Lausanne, Pfizer
+export load, save
 
 const datadir = joinpath(dirname(@__FILE__), "..", "data")
 
