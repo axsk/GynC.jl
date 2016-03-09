@@ -1,4 +1,4 @@
-module Gync
+module GynC
 
 using Mamba, Distributions
 using JLD, HDF5
