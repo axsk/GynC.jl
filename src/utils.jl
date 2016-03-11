@@ -81,7 +81,7 @@ function gync(y0::Vector{Float64}, tspan::Vector{Float64}, parms::Vector{Float64
 end
 
 function gync(y0::Vector{Float64}, tspan::AbstractVector, parms::Vector{Float64})
-  gync(y0, collect(tspan), parms)
+  gync(y0, collect(Float64, tspan), parms)
 end
 
 
