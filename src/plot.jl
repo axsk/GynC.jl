@@ -65,20 +65,15 @@ end
 
 ### residuum plots
 
-#using PyPlot
+using PyPlot
 
-function plot_residuum(c::Mamba.ModelChains, species::Int; t = 0:0.1:31)
+function plot_residuum(c::Mamba.ModelChains, species::Int; t = 0:0.1:30)
+  figure()
   speciesid = measuredinds[species]
-  foldl(
-    layer,
-    scatterplot(
-      x = 0:30, 
-      y = c.model[:data][species,:] |> vec),
-    map(
-      sol -> lineplot(
-        x = t, 
-        y = sol[speciesid,:]), 
-      samplesolutions(c, t)))
+  PyPlot.plot(collect(0:30.), c.model[:data][species,:] |> vec, "o")
+  for sol in samplesolutions(c,t)
+    PyPlot.plot(collect(t), sol[speciesid,:] |> vec)
+  end
 end
 
 function samplesolutions(c::Mamba.ModelChains, t)

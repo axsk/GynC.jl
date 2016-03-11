@@ -27,4 +27,6 @@ include("model.jl")
 include("io.jl")
 include("reweight.jl")
 
+include("plot.jl")
+
 end
