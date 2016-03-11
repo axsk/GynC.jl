@@ -1,6 +1,11 @@
 function load(path; all::Bool=false)
-  sim = deserialize_mc(JLD.load(path, "modelchains"))
+  c = deserialize_mc(JLD.load(path, "modelchains"))
   # TODO: implement all loading
+  if all
+    val = JLD.load(path, "chains")
+    c = ModelChains(Chains(val, 1:c.range.step:c.range.stop, c.names, c.chains), c.model)
+  end
+  c
 end
 
 function save(path, sim::ModelChains)
