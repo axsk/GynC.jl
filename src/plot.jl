@@ -65,15 +65,19 @@ end
 
 ### residuum plots
 
+using PyCall
 using PyPlot
+@pyimport seaborn as sns
 
-function plot_residuum(c::Mamba.ModelChains, species::Int; t = 0:0.1:30)
+function plot_residuum(c::Mamba.ModelChains, species::Int; t = 0:0.1:30, kwargs...)
   figure()
   speciesid = measuredinds[species]
-  PyPlot.plot(collect(0:30.), c.model[:data][species,:] |> vec, "o")
-  for sol in samplesolutions(c,t)
-    PyPlot.plot(collect(t), sol[speciesid,:] |> vec)
+  sols = samplesolutions(c,t)
+  cols = sns.dark_palette("seagreen", n_colors=length(sols))
+  for (i,sol) in enumerate(sols)
+    PyPlot.plot(collect(t), sol[speciesid,:] |> vec, color=cols[i]; kwargs...)
   end
+  PyPlot.plot(collect(0:30.), c.model[:data][species,:] |> vec, "o")
 end
 
 function samplesolutions(c::Mamba.ModelChains, t)
