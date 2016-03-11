@@ -24,14 +24,14 @@ type ModelConfig
   parms_bound::Vector # upper bound of flat parameter prior
 end
 
-ModelConfig(s::Subject, args...) = ModelConfig(data(s), args...)
+ModelConfig(s::Subject; args...) = ModelConfig(data(s); args...)
 
-ModelConfig(data, sigma_rho=0.1, sigma_y0=1, parms_bound::Real=5) =
+ModelConfig(data; sigma_rho=0.1, sigma_y0=1, parms_bound::Real=5) =
   ModelConfig(data, sigma_rho, sigma_y0, parms_bound * refparms)
 
 function gaussianmixture(y::Matrix, stdfactor=1)
-   covariances = mapslices(std, y, 2) * stdfactor |> vec
-   normals = mapslices(yt->MvNormal(yt, covariances), y, 1) |> vec
+   variances = mapslices(std, y, 2) * stdfactor |> vec
+   normals = mapslices(yt->MvNormal(yt, variances), y, 1) |> vec
    MixtureModel(normals)
 end
 
