@@ -1,17 +1,18 @@
-function load(path; all::Bool=false)
+" Load a saved ModelChain from `path`. If `all=false` only load the last iteration "
+function load(path; all::Bool=true)
   c = deserialize_mc(JLD.load(path, "modelchains"))
-  # TODO: implement all loading
   if all
     val = JLD.load(path, "chains")
-    c = ModelChains(Chains(val, 1:c.range.step:c.range.stop, c.names, c.chains), c.model)
+    c = ModelChains(Chains(val, c.range, c.names, c.chains), c.model)
   end
   c
 end
 
-function save(path, sim::ModelChains)
+" Save the simulated ModelChain `sim` to `path`. "
+function save(path, sim::ModelChains; force=false)
   s = size(sim.value)
-  s[1] < 1     && error("cannot save empty chain")
-  isfile(path) && error("$path already exists. Use append! or delete it.")
+  s[1] < 1 && error("cannot save empty chain")
+  !force && isfile(path) && error("$path already exists. Use `append!` or force overwriting using `force`.")
 
   mkpath(dirname(path))
   jldopen(path, "w") do j
@@ -19,16 +20,20 @@ function save(path, sim::ModelChains)
     j["chains"][:,:,:] = sim.value
     j["modelchains"] = serialize_mc(sim[end:end,:,:])
   end
+  sim
 end
 
+" Serialize the ModelChain `mc`. Used for storage via JLD " 
 function serialize_mc(mc::ModelChains)
   io = IOBuffer()
   serialize(io, mc)
   io.data
 end
 
+" Deserialize a serialized ModelChain "
 deserialize_mc(ser) = deserialize(IOBuffer(ser))
 
+" Append the surplus iterations from `sim` to the file specified by `path`."
 function append!(path, sim::ModelChains)
   jldopen(path, "r+") do j
     oldrows = size(j["chains"], 1)
@@ -43,20 +48,21 @@ function append!(path, sim::ModelChains)
   end
 end
 
+" If the file speciefied in `path` exists, continue mcmc simulation of that file, otherwise start a new one with the given `config`.
+Saves the result every `batchiters` to the file until `maxiters` is reached."
 function batch(path::AbstractString; batchiters=100_000, maxiters=10_000_000, config::Union{ModelConfig, Void}=nothing, mcmcargs...)
 
   if !isfile(path)
-    isa(config, ModelConfig) || Base.error("not given a config")
+    isa(config, ModelConfig) || Base.error("Need to give a config")
     sim = mcmc(config, batchiters; mcmcargs...)
     save(path, sim)
   end
 
-  sim = load(path)
+  sim = load(path, all=false)
 
   # only verbose is allowed in mcmc(::ModelChains,...)
   mcmcargs = filter(x->x[1]==:verbose, mcmcargs)
 
-  # TODO: might contain bug if step skips maxiter
   while (iters = min(batchiters, maxiters-last(sim))) >= step(sim)
     sim = Mamba.mcmc(sim, iters; mcmcargs...)
     append!(path, sim)
