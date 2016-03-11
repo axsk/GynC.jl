@@ -3,6 +3,8 @@ module GynC
 using Mamba, Distributions
 using JLD, HDF5
 using DataFrames
+using Requires
+
 #using Lumberjack
 
 import Mamba.mcmc
@@ -27,6 +29,6 @@ include("model.jl")
 include("io.jl")
 include("reweight.jl")
 
-include("plot.jl")
+@require PyPlot include("plot.jl")
 
 end
