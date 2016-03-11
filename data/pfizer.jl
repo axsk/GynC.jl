@@ -1,4 +1,7 @@
-Pfizer(id::Int)   = Subject(pfizerdata(), (:pfizer, id))
+# id: 1-13
+# pfizer normal data
+
+Pfizer(id::Int)   = Subject(pfizerdata()[id], (:pfizer, id))
 
 """ load the patient data and return a vector of Arrays, each of shape 4x31 denoting the respective concentration or NaN if not available """
 function pfizerdata()
