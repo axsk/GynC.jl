@@ -86,7 +86,7 @@ function llh(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector{Float64},
     #end
     return -Inf
   end
-  sre = squaredrelativeerror(data, y)
+  sre = distsquared(data, y)
   -1/(2*sigma^2) * sre
 end
 
@@ -96,6 +96,13 @@ function squaredrelativeerror(data1::Matrix, data2::Matrix)
   reldiff = diff ./ data1
   return sumabs2(reldiff[!isnan(reldiff)])
 end
+
+function l2(data1, data2)
+  diff = (data1 - data2) ./ [120, 10, 400, 15]
+  sumabs2(diff[!isnan(diff)])
+end
+
+distsquared = l2
 
 function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; relprop=0.1, mcmcargs...)
   m = model(c)
