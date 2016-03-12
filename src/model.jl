@@ -7,11 +7,7 @@ const refy0       = include("const/refy0.jl")
 const refallparms = include("const/refparms.jl")
 const refparms    = refallparms[sampledinds]
 
-function allparms(parms::Vector)
-  p = copy(refallparms)
-  p[sampledinds] = parms
-  p
-end
+allparms(parms::Vector) = (p = copy(refallparms); p[sampledinds] = parms; p)
 
 const speciesnames   = include("const/speciesnames.jl")
 const parameternames = include("const/parameternames.jl")[sampledinds]
@@ -20,7 +16,7 @@ const samplednames   = [parameternames; speciesnames]
 type ModelConfig
   data::Matrix      # measurements
   sigma_rho::Real   # measurement error / std for likelihood gaussian 
-  sigma_y0::Real    # prior sigma for y0 kernels
+  sigma_y0::Real    # y0 prior mixture component std = ref. solution std * sigma_y0
   parms_bound::Vector # upper bound of flat parameter prior
 end
 
@@ -30,8 +26,9 @@ ModelConfig(data; sigma_rho=0.1, sigma_y0=1, parms_bound::Real=5) =
   ModelConfig(data, sigma_rho, sigma_y0, parms_bound * refparms)
 
 function gaussianmixture(y::Matrix, stdfactor=1)
-   variances = mapslices(std, y, 2) * stdfactor |> vec
-   normals = mapslices(yt->MvNormal(yt, variances), y, 1) |> vec
+   stds = mapslices(std, y, 2) * stdfactor |> vec
+   vars = abs2(stds)
+   normals = mapslices(yt->MvNormal(yt, vars), y, 1) |> vec
    MixtureModel(normals)
 end
 
@@ -65,7 +62,7 @@ function model(c::ModelConfig)
 end
 
 function referencesolution(resolution=1)
-  sol = gync(refy0, collect(1:resolution:31.), allparms(refparms))
+  sol = gync(refy0, collect(0:resolution:30.), allparms(refparms))
   # since we get a (small) negative value for OvF, impeding the log transformation for the prior, set this to the next minimal value
   for i in 1:size(sol,1)
     sol[i, sol[i,:] .<= 0] = minimum(sol[i, sol[i,:] .> 0])
@@ -104,11 +101,13 @@ end
 
 distsquared = l2
 
+" simulate `iters` iteration of the markov chain corresponding to the model specified by the `ModelConfig`, with initial values `inity0` and `initparms` (defaulting to the reference solution). The initial proposal density at point x is a Log-normal distribution with median x standard deviation x*`relprop` " 
 function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; relprop=0.1, mcmcargs...)
   m = model(c)
 
   nparms = length(inity0) + length(initparms)
-  prop = log(1+(relprop^2)) * eye(nparms) # TODO: check
+
+  prop = log(1+(relprop^2)) * eye(nparms)
 
   setsamplers!(m, [AMM([:parms, :logy0], prop, adapt=:all)])
 
