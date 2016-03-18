@@ -37,6 +37,18 @@ function likelihoods(chain::AbstractMatrix, data::Vector{Matrix}, sigma::Real)
   likelihoods
 end
 
+" reweight the given `WeightedChain` and return a `Dict` with the iterations given in `range` "
+function reweight(c::WeightedChain, range)
+  res = Dict{Int, WeightedChain}()
+  pi = deepcopy(c)
+
+  for i in 0:maximum(range)
+    in(i, range) && push!(res, i=>deepcopy(pi))
+    reweight!(pi)
+  end
+  res
+end
+
 
 " reweight the given `WeightedChain` according to its `likelihoods` "
 reweight!(c::WeightedChain) = reweight!(c.weights, c.likelihoods)
