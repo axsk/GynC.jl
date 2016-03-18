@@ -3,7 +3,8 @@ function load(path; all::Bool=true)
   c = deserialize_mc(JLD.load(path, "modelchains"))
   if all
     val = JLD.load(path, "chains")
-    c = ModelChains(Chains(val, c.range, c.names, c.chains), c.model)
+    range = c.range.step:c.range.step:c.range.stop
+    c = ModelChains(Chains(val, range, c.names, c.chains), c.model)
   end
   c
 end
