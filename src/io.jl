@@ -51,12 +51,12 @@ end
 
 " If the file speciefied in `path` exists, continue mcmc simulation of that file, otherwise start a new one with the given `config`.
 Saves the result every `batchiters` to the file until `maxiters` is reached."
-function batch(path::AbstractString; batchiters=100_000, maxiters=10_000_000, config::Union{ModelConfig, Void}=nothing, mcmcargs...)
+function batch(path::AbstractString; batchiters=100_000, maxiters=10_000_000, config::Union{ModelConfig, Void}=nothing, force=false, mcmcargs...)
 
-  if !isfile(path)
+  if !isfile(path) || force
     isa(config, ModelConfig) || Base.error("Need to give a config")
     sim = mcmc(config, batchiters; mcmcargs...)
-    save(path, sim)
+    save(path, sim, force=force)
   end
 
   sim = load(path, all=false)
