@@ -75,9 +75,9 @@ function plot_residuum(c::Mamba.ModelChains, species::Int; t = 0:0.1:30, kwargs.
   sols = samplesolutions(c,t)
   cols = sns.dark_palette("seagreen", n_colors=length(sols))
   for (i,sol) in enumerate(sols)
-    PyPlot.plot(collect(t), sol[speciesid,:] |> vec, color=cols[i]; kwargs...)
+    PyPlot.plot(collect(t), sol[speciesid,:] |> vec, color=cols[i], zorder=1; kwargs...)
   end
-  PyPlot.plot(collect(0:30.), c.model[:data][species,:] |> vec, "o")
+  PyPlot.plot(collect(0:30.), c.model[:data][species,:] |> vec, "o", zorder=2)
 end
 
 function samplesolutions(c::Mamba.ModelChains, t)
