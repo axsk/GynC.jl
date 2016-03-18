@@ -6,7 +6,9 @@ type WeightedChain
   likelihoods::AbstractMatrix
 end
 
-function WeightedChain(chain::AbstractMatrix, data::Vector{Matrix}, sigma::Real)
+WeightedChain(c::Vector, w, l) = WeightedChain(reshape(c,length(c),1), w, l)
+
+function WeightedChain(chain::Matrix, data::Vector{Matrix}, sigma::Real)
   WeightedChain(chain, ones(size(chain, 1)), likelihoods(chain, data, sigma))
 end
 
@@ -35,14 +37,28 @@ function likelihoods(chain::AbstractMatrix, data::Vector{Matrix}, sigma::Real)
   likelihoods
 end
 
-function reweight!(c::WeightedChain)
-  w = c.weights
-  L = c.likelihoods
+
+" reweight the given `WeightedChain` according to its `likelihoods` "
+reweight!(c::WeightedChain) = reweight!(c.weights, c.likelihoods)
+
+function reweight!(w::DenseVector, L::DenseMatrix)
   K = size(L,1)
   M = size(L,2)
-  norm = [sum([w[k] * L[k,m] for k=1:K]) for m=1:M]
-  for k=1:K
-    w[k] = w[k] / M * sum([L[k,m] / norm[m] for m=1:M])
+  norm = Array{Float64}(M)
+  @inbounds for m=1:M
+    s = 0.
+    @simd for k=1:K
+      s += w[k] * L[k,m]
+    end
+    norm[m] = s
+  end
+
+  @inbounds for k=1:K
+    s = 0.
+    @simd for m=1:M
+      s += L[k,m] / norm[m]
+    end
+    w[k] = w[k] / M * s
   end
   w
 end

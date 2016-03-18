@@ -13,6 +13,8 @@ export mcmc, batch
 export ModelConfig, Lausanne, Pfizer
 export load, save
 
+export WeightedChain, reweight!
+
 const datadir = joinpath(dirname(@__FILE__), "..", "data")
 
 type Subject
