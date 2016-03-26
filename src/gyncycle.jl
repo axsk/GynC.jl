@@ -1,8 +1,8 @@
 # compute the gyncycle rhs and write it into f
 function gyncycle_rhs!{T<:Real}(y::Vector{T}, p::Vector{T}, f::Vector{T})
 
-    @assert length(p) == 114
-    @assert length(y) == length(f) == 33
+    #@assert length(p) == 114
+    #@assert length(y) == length(f) == 33
 
     @inline hplus(s, t, n)  = (s/t)^n / (1. + (s/t)^n)
     @inline hminus(s, t, n) = 1.      / (1. + (s/t)^n)
@@ -49,7 +49,7 @@ function gyncycle_rhs!{T<:Real}(y::Vector{T}, p::Vector{T}, f::Vector{T})
 
         # eq. 29a/b
         y_freq = p[93] * hminus(y[P4], p[94], p[95]) * (1. + p[96] * hplus(y[E2], p[97], p[98]))
-        y_mass = p[99] * hplus(y[E2], p[100], p[101]) + hminus(y[E2], p[102], p[103])
+        y_mass = p[99] * (hplus(y[E2], p[100], p[101]) + hminus(y[E2], p[102], p[103]))
 
         # eq. 1: LH in the pituitary (LH_pit)
         Syn_LH = (p[1] + p[2] * hplus(y[E2], p[3], p[4])) * hminus(y[P4], p[5], p[6])
