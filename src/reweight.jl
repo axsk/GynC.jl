@@ -74,3 +74,39 @@ function reweight!(w::DenseVector, L::DenseMatrix)
   end
   w
 end
+
+# in-place projection of y onto the point of the unit simplex with minimal euclidean distance
+# implementation of Algorithm 2 from https://www.gipsa-lab.grenoble-inp.fr/~laurent.condat/publis/Condat_simplexproj.pdf
+function projectsimplex!{T <: Real}(y::Array{T, 1})
+  heap = heapify(y, Base.Order.Reverse)
+  cumsum = zero(T)
+  t = zero(T)
+  for k in 1:length(y)
+    uk = heappop!(heap, Base.Order.Reverse)
+    cumsum += uk
+    normalized = (cumsum - one(T)) / k  
+    normalized >= uk && break
+    t = normalized
+  end
+  for i in 1:length(y)
+    y[i] = max(y[i] - t, zero(T))
+  end
+end
+
+# Algorithm 1
+function projectsimplex_sort!{T <: Real}(y::Array{T, 1}, temp=similar(y))
+  copy!(temp, y)
+  sort!(temp, rev=true)
+  cumsum = zero(T)
+  t = zero(T)
+  for k in 1:length(y)
+    uk = temp[k]
+    cumsum += uk
+    normalized = (cumsum - one(T)) / k  
+    normalized >= uk && break
+    t = normalized
+  end
+  for i in 1:length(y)
+    y[i] = max(y[i] - t, zero(T))
+  end
+end
