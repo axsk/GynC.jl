@@ -51,12 +51,12 @@ function gyncycle_rhs!(y,p,f)
     @inbounds begin
 
         # eq. 29a/b
-        y_freq = p[93] * hminus(y[P4], p[94], p[95]) * (1. + p[96] * hplus(y[E2], p[97], p[98]))
-        y_mass = p[99] * (hplus(y[E2], p[100], p[101]) + hminus(y[E2], p[102], p[103]))
+        y_freq = p[93] * hminus(y[P4], p[94], 2) * (1. + p[96] * hplus(y[E2], p[97], 10))
+        y_mass = p[99] * (hplus(y[E2], p[100], 2) + hminus(y[E2], p[102], 1))
 
         # eq. 1: LH in the pituitary (LH_pit)
-        Syn_LH = (p[1] + p[2] * hplus(y[E2], p[3], p[4])) * hminus(y[P4], p[5], p[6])
-        Rel_LH = (p[7] + p[8] * hplus(y[G_R_a], p[9], p[10]))
+        Syn_LH = (p[1] + p[2] * hplus(y[E2], p[3], 10)) * hminus(y[P4], p[5], 1)
+        Rel_LH = (p[7] + p[8] * hplus(y[G_R_a], p[9], 5))
         f[LH_pit] = Syn_LH - Rel_LH * y[LH_pit]
 
         # eq. 2: LH in the blood (LH_blood) TODO: check occurence of y[LH_pit]
@@ -72,8 +72,8 @@ function gyncycle_rhs!(y,p,f)
         f[R_LH_des] = p[15] * y[LH_R] - p[14] * y[R_LH_des]
 
         # eq. 6: FSH in the pituitary (FSH_pit)
-        Syn_FSH = p[16] / (1. + (y[IhA_e]/p[17]) ^ p[18] + (y[IhB]/p[19]) ^ p[20]) * hminus(y_freq, p[21], p[22])
-        Rel_FSH = (p[23] + p[24] * hplus(y[G_R_a], p[25], p[26]))
+        Syn_FSH = p[16] / (1. + (y[IhA_e]/p[17]) ^ 5 + (y[IhB]/p[19]) ^ 3) * hminus(y_freq, p[21], 3)
+        Rel_FSH = (p[23] + p[24] * hplus(y[G_R_a], p[25], 3))
         f[FSH_pit] = Syn_FSH - Rel_FSH * y[FSH_pit]
 
         # eq. 7: FSH in the blood (FSH_blood)
@@ -89,48 +89,48 @@ function gyncycle_rhs!(y,p,f)
         f[R_FSH_des] = p[30] * y[FSH_R] - p[29] * y[R_FSH_des]
 
         # eq. 11: Follicular sensitivity to LH (s)
-        f[s] = p[31] * hplus(y[FSH_blood], p[32], p[33]) - p[34] * hplus(y[P4], p[35], p[36]) * y[s]
+        f[s] = p[31] * hplus(y[FSH_blood], p[32], 5) - p[34] * hplus(y[P4], p[35], 5) * y[s]
 
         # eq. 12: Antral follicel develop. stage 1 (AF1)
-        f[AF1] = p[37] * hplus(y[FSH_R], p[38], p[39]) - p[40] * y[FSH_R] * y[AF1]
+        f[AF1] = p[37] * hplus(y[FSH_R], p[38], 3) - p[40] * y[FSH_R] * y[AF1]
 
         # eq. 13: Antral follicel develop. stage 2 (AF2)
-        f[AF2] = p[40] * y[FSH_R] * y[AF1] - p[41] * (y[LH_R]/p[42]) ^ p[43] * y[s] * y[AF2]
+        f[AF2] = p[40] * y[FSH_R] * y[AF1] - p[41] * (y[LH_R]/p[42]) ^ 3.689 * y[s] * y[AF2]
 
         # eq. 14: Antral follicel develop. stage 3 (AF3)
-        f[AF3] = p[41] * (y[LH_R]/p[42]) ^ p[43] * y[s] * y[AF2] +
+        f[AF3] = p[41] * (y[LH_R]/p[42]) ^ 3.689 * y[s] * y[AF2] +
                  p[44] * y[FSH_R] * y[AF3] * (1 - y[AF3]/p[45]) -
-                 p[46] * (y[LH_R]/p[42]) ^ p[47] * y[s] * y[AF3]
+                 p[46] * (y[LH_R]/p[42]) ^ 5 * y[s] * y[AF3]
 
         # eq. 15: Antral follicel develop. stage 4 (AF4)
-        f[AF4] = p[46] * (y[LH_R]/p[42]) ^ p[47] * y[s] * y[AF3] +
-                 p[48] * (y[LH_R]/p[42]) ^ p[49] * y[AF4] * (1. - y[AF4]/p[45]) -
+        f[AF4] = p[46] * (y[LH_R]/p[42]) ^ 5 * y[s] * y[AF3] +
+                 p[48] * (y[LH_R]/p[42]) ^ 2 * y[AF4] * (1. - y[AF4]/p[45]) -
                  p[50] * (y[LH_R]/p[42]) * y[s] * y[AF4]
 
         # eq. 16: Pre-ovulatory follicular stage (PrF)
         f[PrF] = p[50] * (y[LH_R]/p[42]) * y[s] * y[AF4] -
-                 p[51] * (y[LH_R]/p[42]) ^ p[52] * y[s] * y[PrF]
+                 p[51] * (y[LH_R]/p[42]) ^ 6 * y[s] * y[PrF]
 
         # eq. 17: Ovulatory follicular stage (OvF)
-        f[OvF] = p[53] * (y[LH_R]/p[42]) ^ p[52] * y[s] * hplus(y[PrF], p[54], p[55]) - p[56] * y[OvF]
+        f[OvF] = p[53] * (y[LH_R]/p[42]) ^ 6 * y[s] * hplus(y[PrF], p[54], 10) - p[56] * y[OvF]
 
         # eq. 18: Ovulatory scar 1 (Sc1)
-        f[Sc1] = p[57] * hplus(y[OvF], p[58], p[59]) - p[60] * y[Sc1]
+        f[Sc1] = p[57] * hplus(y[OvF], p[58], 10) - p[60] * y[Sc1]
 
         # eq. 19: Ovulatory scar 2 (Sc2)
         f[Sc2] = p[60] * y[Sc1] - p[61] * y[Sc2]
 
         # eq. 20: Development stage 1 of corpus luteum (Lut1)
-        f[Lut1] = p[61] * y[Sc2] - p[62] * (1. + p[63] * hplus(y[G_R_a], p[64], p[65])) * y[Lut1]
+        f[Lut1] = p[61] * y[Sc2] - p[62] * (1. + p[63] * hplus(y[G_R_a], p[64], 5)) * y[Lut1]
 
         # eq. 21: Development stage 2 of corpus luteum (Lut2)
-        f[Lut2] = p[62] * y[Lut1] - p[66] * (1. + p[63] * hplus(y[G_R_a], p[64], p[65])) * y[Lut2]
+        f[Lut2] = p[62] * y[Lut1] - p[66] * (1. + p[63] * hplus(y[G_R_a], p[64], 5)) * y[Lut2]
 
         # eq. 22: Development stage 3 of corpus luteum (Lut3)
-        f[Lut3] = p[66] * y[Lut2] - p[67] * (1. + p[63] * hplus(y[G_R_a], p[64], p[65])) * y[Lut3]
+        f[Lut3] = p[66] * y[Lut2] - p[67] * (1. + p[63] * hplus(y[G_R_a], p[64], 5)) * y[Lut3]
 
         # eq. 23: Development stage 4 of corpus luteum (Lut4)
-        f[Lut4] = p[67] * y[Lut3] - p[68] * (1. + p[63] * hplus(y[G_R_a], p[64], p[65])) * y[Lut4]
+        f[Lut4] = p[67] * y[Lut3] - p[68] * (1. + p[63] * hplus(y[G_R_a], p[64], 5)) * y[Lut4]
 
         # eq. 24: Estradiol blood level (E2)
         f[E2] = p[69] +
