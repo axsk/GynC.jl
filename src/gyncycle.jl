@@ -1,11 +1,14 @@
-# compute the gyncycle rhs and write it into f
-function gyncycle_rhs!{T<:Real}(y::Vector{T}, p::Vector{T}, f::Vector{T})
+hplus(s, t, n)  = (s/t)^n / (1. + (s/t)^n)
+hminus(s, t, n) = 1.      / (1. + (s/t)^n)
 
+# compute the gyncycle rhs and write it into f
+function gyncycle_rhs!(y,p,f)
+#function gyncycle_rhs!{T<:Real, S<:Real}(y::Vector{T}, p::Vector{S}, f::Vector{T})
+#function gyncycle_rhs!{T<:Real}(y::Vector{T}, p::Vector{T}, f::Vector{T})
+#function gyncycle_rhs!(y::Vector, p::Vector, f::Vector)
     #@assert length(p) == 114
     #@assert length(y) == length(f) == 33
 
-    @inline hplus(s, t, n)  = (s/t)^n / (1. + (s/t)^n)
-    @inline hminus(s, t, n) = 1.      / (1. + (s/t)^n)
 
     ### indices ###
 
