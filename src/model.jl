@@ -95,6 +95,8 @@ function squaredrelativeerror(data1::Matrix, data2::Matrix)
 end
 
 function l2(data1, data2)
+  # TODO: think about the scales
+  # NOTE: dependence on amount of measured data
   diff = (data1 - data2) ./ [120, 10, 400, 15]
   sumabs2(diff[!isnan(diff)])
 end
@@ -109,6 +111,7 @@ function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; relprop=0
 
   prop = log(1+(relprop^2)) * eye(nparms)
 
+  # TODO: try hmcmc
   setsamplers!(m, [AMM([:parms, :logy0], prop, adapt=:all)])
 
   inp = Dict{Symbol,Any}()

@@ -12,6 +12,7 @@ function WeightedChain(chain::Matrix, data::Vector{Matrix}, sigma::Real)
   WeightedChain(chain, ones(size(chain, 1)), likelihoods(chain, data, sigma))
 end
 
+# TODO: normalisation / uniform scaling over all persons? check importance / necessity for other steps
 function likelihood(data::Matrix, sample::Vector, sigma::Real)
   parms, y0 = sampletoparms(sample)
   exp(llh(data, parms, y0, sigma))
@@ -62,7 +63,7 @@ function reweight!(w::DenseVector, L::DenseMatrix)
     @simd for k=1:K
       s += w[k] * L[k,m]
     end
-    norm[m] = s
+    norm[m] = s # rho(z_m)
   end
 
   @inbounds for k=1:K
