@@ -1,22 +1,25 @@
-### WeightedChain
+abstract WeightedChain
 
-type WeightedChain
-  chain::AbstractMatrix
+type SimpleWeightedChain <: WeightedChain
   weights::AbstractVector
   likelihoods::AbstractMatrix # row = param, col = subject
 end
 
 
-### WeightedChain constructors for the GynC model
+### GynCChain constructors for the GynC model ###
+# TODO: move this section to model.jl / create a WeightedMambaChain
 
-# TODO: move this section to model.jl
-
-WeightedChain(c::Vector, w, l) = WeightedChain(reshape(c,length(c),1), w, l)
-
-" construct the WeightedChain computing the likelihoods for the given `samples` (row = sample, col = sampledparam) given `datas` with error `sigma` "
-function WeightedChain(chain::Matrix, datas::Vector{Matrix}, sigma::Real)
-  WeightedChain(chain, ones(size(chain, 1)), likelihoods(chain, datas, sigma))
+type GynCChain <: WeightedChain
+  chain::AbstractMatrix
+  weights::AbstractVector
+  likelihoods::AbstractMatrix
 end
+
+" construct the GynCChain computing the likelihoods for the given `samples` (row = sample, col = sampledparam) given `datas` with error `sigma` "
+function GynCChain(chain::Matrix, datas::Vector{Matrix}, sigma::Real)
+  GynCChain(chain, ones(size(chain, 1)), likelihoods(chain, datas, sigma))
+end
+GynCChain(c::Vector, w, l) = GynCChain(reshape(c,length(c),1), w, l)
 
 " compute the likelihood matrix for given chains, data, sigma) "
 function likelihoods(chain::AbstractMatrix, data::Vector{Matrix}, sigma::Real)
