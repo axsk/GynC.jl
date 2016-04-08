@@ -50,21 +50,6 @@ function sampletoparms(sample::Vector)
 end
 
 
-### Convenience ###
-
-" iterate function `f` on value `start` and store results for all iterates in `range` as a Dict iteration=>iterate "
-function store_iterates(f::Function, start, range)
-  iterates = Dict{Int, typeof(start)}()
-  curr = deepcopy(start)
-
-  for i in 0:maximum(range)
-    in(i, range) && (iterates[i] = deepcopy(curr))
-    curr = f(curr)
-  end
-  iterates
-end
-
-
 ### Old reweighting, using the non-orthogonal projection ###
 
 " reweight the given `WeightedChain` according to its `likelihoods` "
