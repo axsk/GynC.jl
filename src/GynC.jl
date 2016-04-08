@@ -13,7 +13,9 @@ export mcmc, batch
 export ModelConfig, Lausanne, Pfizer
 export load, save
 
-export WeightedChain, reweight!
+export WeightedChain
+export SimpleWeightedChain, GynCChain
+export gradient_simplex!, reweight!
 
 const datadir = joinpath(dirname(@__FILE__), "..", "data")
 

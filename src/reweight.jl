@@ -99,6 +99,7 @@ end
 
 
 ### Maximal Likelihood / Posterior for the Prior ###
+# TODO: use nonlinear optimizer
 
 A_comprehension(w,L) = product([sum([L[k,m]*w[k] for k=1:length(w)]) for m=1:size(L,2)])
 dA_comprehension(w,L) = [A(w,L) * sum([L[j,m] / sum([L[k,m]*w[k] for k in 1:length(w)]) for m in 1:size(L,2)]) for j in 1:length(w)]
@@ -114,10 +115,8 @@ function dA(w::Vector, L::Matrix)
 end
 
 " gradient ascend of A(w) projected onto the simplex, returning the next step for stepsize h " 
-function gradient_simplex(c::WeightedChain, h::Real)
-  w = gradient_simplex(c.weights, c.likelihoods, h)
-  c = copy(c)
-  c.weights = w
+function gradient_simplex!(c::WeightedChain, h::Real)
+  c.weights = gradient_simplex(c.weights, c.likelihoods, h)
   c
 end
 
