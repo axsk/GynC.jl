@@ -50,22 +50,25 @@ function sampletoparms(sample::Vector)
 end
 
 
-### Old reweighting, using the non-orthogonal projection ###
+### Convenience ###
 
-" reweight the given `WeightedChain` and return a `Dict` with the iterations given in `range` "
-function reweight(c::WeightedChain, range)
-  res = Dict{Int, WeightedChain}()
-  pi = deepcopy(c)
+" iterate function `f` on value `start` and store results for all iterates in `range` as a Dict iteration=>iterate "
+function store_iterates(f::Function, start, range)
+  iterates = Dict{Int, typeof(start)}()
+  curr = deepcopy(start)
 
   for i in 0:maximum(range)
-    in(i, range) && push!(res, i=>deepcopy(pi))
-    reweight!(pi)
+    in(i, range) && (iterates[i] = deepcopy(curr))
+    curr = f(curr)
   end
-  res
+  iterates
 end
 
+
+### Old reweighting, using the non-orthogonal projection ###
+
 " reweight the given `WeightedChain` according to its `likelihoods` "
-reweight!(c::WeightedChain) = reweight!(c.weights, c.likelihoods)
+reweight!(c::WeightedChain) = (reweight!(c.weights, c.likelihoods); c)
 
 function reweight!(w::DenseVector, L::DenseMatrix)
   K = size(L,1)
@@ -111,7 +114,13 @@ function dA(w::Vector, L::Matrix)
 end
 
 " gradient ascend of A(w) projected onto the simplex, returning the next step for stepsize h " 
-gradient_simplex(c::WeightedChain, h::Real) = gradient_simplex(c.weights, c.likelihoods, h)
+function gradient_simplex(c::WeightedChain, h::Real)
+  w = gradient_simplex(c.weights, c.likelihoods, h)
+  c = copy(c)
+  c.weights = w
+  c
+end
+
 gradient_simplex(w,L,h) = projectsimplex!(w + dA(w, L) * h) 
 
 
@@ -127,11 +136,11 @@ projectsimplex!(y) = projectsimplex_heap!(y)
 
 " heap implementation (algorithm 2) "
 function projectsimplex_heap!{T <: Real}(y::Array{T, 1})
-  heap = heapify(y, Base.Order.Reverse)
+  heap = Collections.heapify(y, Base.Order.Reverse)
   cumsum = zero(T)
   t = zero(T)
   for k in 1:length(y)
-    uk = heappop!(heap, Base.Order.Reverse)
+    uk = Collections.heappop!(heap, Base.Order.Reverse)
     cumsum += uk
     normalized = (cumsum - one(T)) / k  
     normalized >= uk && break
@@ -140,6 +149,7 @@ function projectsimplex_heap!{T <: Real}(y::Array{T, 1})
   for i in 1:length(y)
     y[i] = max(y[i] - t, zero(T))
   end
+  y
 end
 
 " sort implementation (algorithm 1), non-allocating when provided `temp` "
@@ -158,4 +168,5 @@ function projectsimplex_sort!{T <: Real}(y::Array{T, 1}, temp=similar(y))
   for i in 1:length(y)
     y[i] = max(y[i] - t, zero(T))
   end
+  y
 end
