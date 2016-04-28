@@ -72,7 +72,7 @@ end
 
 """ loglikelihood (up to proport.) for the parameters given the patientdata """
 function llh(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector{Float64}, sigma::Real)
-  tspan = Array{Float64}(collect(0:30))
+  tspan = collect(0:30.)
   y = gync(y0, parms, tspan)[measuredinds,:]
   if any(isnan(y)) > 0
     #Base.warn("encountered nan in gync result")
@@ -122,4 +122,25 @@ end
 
 ### Solve the GynCycle model
 
-gync_cvode(y0, parms, t) = Sundials.cvode((t,y,dy) -> gyncycle_rhs!(y,p,dy), y0, t)
+" sundials cvode solution to the gyncycle model "
+gync_cvode(y0, p, t) = Sundials.cvode((t,y,dy) -> gyncycle_rhs!(y,p,dy), y0, t)'
+
+const fortranpath = joinpath(dirname(@__FILE__),"..","deps","limex","GynC.so")
+
+""" Wrapper to the LIMEX solver for the GynC model 
+solve the model for the times t given initial condition y0 and parameters parms, and store the result in y"""
+function gync_limex(y0::Vector{Float64}, parms::Vector{Float64}, tspan::Vector{Float64})
+  n = 33
+  m = length(tspan)
+  y = Array{Float64}(n,m)
+
+  @assert length(y0)==33
+  @assert length(parms)==114
+
+  ccall((:limstep_, fortranpath), Ptr{Array{Float64,2}},
+    (Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Int64}, Ptr{Int64}, Ptr{Float64}),
+    y, copy(y0), tspan, &n, &m, parms)
+  y
+end
+
+gync = gync_cvode
