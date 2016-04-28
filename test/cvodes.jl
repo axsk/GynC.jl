@@ -1,71 +1,57 @@
 module Sensivity
+
+import ForwardDiff
 import Sundials
 import Sundials: realtype, N_Vector
-import ForwardDiff
-
-type UserData
-    rhs!::Function # the main problem rhs
-    p::Vector{Float64} # parameters
-    Jac::Function # differentiator
-end
-
-function extract(userdata_ptr::Ptr{Void})
-    d = unsafe_pointer_to_objref(userdata_ptr) :: UserData
-    (d.rhs!, d.p, d.Jac)
-end
-
-# function used to compute rhs 
-function cvodes_rhs(t, y::N_Vector, dy::N_Vector, userdata_ptr::Ptr{Void})
-    #@time y   = Sundials.asarray(y)
-    #dy  = Sundials.asarray(dy)
-    rhs!, p, D! = extract(userdata_ptr)
-    rhs!(t, Sundials.asarray(y), p, Sundials.asarray(dy))
-    return Int32(0)
-end
-
-# given a function `f!(t, y, p, dy)` return the jacobian operator `J: (y0,p0) |-> D_{y,p} f(y0,p0)
-function differentiator(f!,ny,np)
-    y  = Vector(ny)
-    p  = Vector(np)
-    dy = Vector(ny)
-    J  = Matrix{Float64}(ny, ny+np) # closing over memory
-    function f_merged(x)
-        f!(0, x[1:ny], x[ny+(1:np)], dy) # TODO fix time dependence
-        dy
-    end
-    # create a mutating jacobian operator for the merged (x and p) problem
-    j! = ForwardDiff.jacobian(f_merged, mutates=true)
-    
-    cy = copy(y) # position of evaluation
-    cp = copy(p) 
-
-    ev = Vector{Float64}(ny+np)
-
-    (y, p) -> begin
-        ev[1:ny] = y
-        ev[ny+(1:np)] = p
-        j!(J, ev)
-    end
-end
-
 NVecVec = Ptr{N_Vector}
+
+# userdata object from sundials, storing our problem
+type UserData
+    f!::Function # the main problem rhs
+    p::Vector{Float64} # parameters
+    jac::Function # differentiator
+end
+
+extract(userdata_ptr::Ptr{Void}) = unsafe_pointer_to_objref(userdata_ptr)
+
+# return the jacobian function for f
+function differentiator(f!,ny,np)
+    dy = Vector(ny)
+    Jy = Matrix{Float64}(ny,ny)
+    Jp = Matrix{Float64}(ny,np)
+    # add cache?
+    cachey = ForwardDiff.ForwardDiffCache()
+    cachep = ForwardDiff.ForwardDiffCache()
+
+    # Return function which for given `t, y, p` returns the jacobians wrt y and p: `Jy, Jp`.
+    function jac(t, y, p)
+        Jy = ForwardDiff.jacobian(y->(f!(t,y,p,dy); dy), y, cache=cachey)
+        Jp = ForwardDiff.jacobian(p->(f!(t,y,p,dy); dy), p, cache=cachep)
+        Jy, Jp
+    end
+end
 
 function cvodes_sens_rhs(ns::Int32, t::realtype, y::N_Vector, ydot::N_Vector, yS::NVecVec, ySdot::NVecVec, user_data::Ptr{Void}, tmp1::N_Vector, tmp2::N_Vector)
     np = ns
     
-    f!, p, D! = extract(user_data)
-    y     = Sundials.asarray(y)
+    u = extract(user_data)
+    Jy, Jp = u.jac(t, Sundials.asarray(y), u.p)
+    
     yS    = pointer_to_array(yS, np)
     ySdot = pointer_to_array(ySdot, np)
-    
-    J = D!(y, p)
-    
-    ny = size(J,1)
-    
+
     for i in 1:np
-        #ySi      = Sundials.asarray(yS[i])
-        ySdot[i] = Sundials.nvector(J[:,1:ny] * Sundials.asarray(yS[i]) + J[:,ny+i])
+        ySdot[i] = Sundials.nvector(Jy * Sundials.asarray(yS[i]) + Jp[:,i])
     end
+    return Int32(0)
+end
+
+# function used to compute rhs 
+function cvodes_rhs(t, y::N_Vector, dy::N_Vector, userdata_ptr::Ptr{Void})
+    u = extract(userdata_ptr)
+    f! = u.f!
+    p  = u.p
+    f!(t, Sundials.asarray(y), p, Sundials.asarray(dy))
     return Int32(0)
 end
 
@@ -104,14 +90,19 @@ function cvodes(f::Function, y0::Vector{Float64}, p::Vector{Float64}, ts::Vector
     Sundials.CVDiag(cvode_mem)
   elseif solvertype == :spgmr
     Sundials.CVSpgmr(cvode_mem, 0, 0)
+  elseif solvertype == :spbcg
+    Sundials.CVSpbcg(cvode_mem, 0, 0)
+  elseif solvertype == :sptfqmr
+    Sundials.CVSptfqmr(cvode_mem, 0, 0)
   else
     error("no valid `newton_solver` specified")
   end
+
   # initialize automatic differentiator
-  J! = autodiff ? differentiator(f, ny, np) : ()->()
+  jac = autodiff ? differentiator(f, ny, np) : ()->()
     
   # Store `f, p, J!` in UserData for evaluation via cvodes_rhs wrapper
-  Sundials.CVodeSetUserData(cvode_mem, UserData(f,p,J!))
+  Sundials.CVodeSetUserData(cvode_mem, UserData(f,p,jac))
     
   # specify tolerances
   Sundials.CVodeSStolerances(cvode_mem, reltol, abstol)
@@ -168,16 +159,14 @@ function cvodes(f::Function, y0::Vector{Float64}, p::Vector{Float64}, ts::Vector
 end
 
 end # module
-# output (5.079k) -------------
 
-# code cell -------------------
-function f(t,y,p,dy)
+function fsimple(t,y,p,dy)
     dy[1] = p[1] 
-    dy[2] = p[2]^2 * y[1]
+    dy[2] = p[2] + y[2]
 end
 
 function test_simple()
-  Sensivity.cvodes(f, [0., 0.], [5., 1.], collect(0.:1.:10.), autodiff = true)
+  Sensivity.cvodes(fsimple, [3., 0.], [5., 1.], collect(0.:1.:10.), autodiff = true)
 end
 
 # output (0.777k) -------------
