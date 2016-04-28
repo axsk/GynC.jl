@@ -5,6 +5,8 @@ using JLD, HDF5
 using DataFrames
 using Requires
 
+import Sundials
+
 #using Lumberjack
 
 import Mamba.mcmc
@@ -29,6 +31,7 @@ data(s::Subject) = s.data
 include("utils.jl")
 include("../data/lausanne.jl")
 include("../data/pfizer.jl")
+include("gyncycle.jl")
 include("model.jl")
 include("io.jl")
 include("reweight.jl")

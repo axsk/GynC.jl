@@ -61,30 +61,6 @@ function samplemean(chains::Vector{Mamba.ModelChains})
   Chains(cat(1, [c.value for c in chains]...))
 end
 
-
-const fortranpath = joinpath(dirname(@__FILE__),"..","deps","limex","GynC.so")
-
-""" Wrapper to the LIMEX solver for the GynC model 
-solve the model for the times t given initial condition y0 and parameters parms, and store the result in y"""
-function gync(y0::Vector{Float64}, tspan::Vector{Float64}, parms::Vector{Float64})
-  n = 33
-  m = length(tspan)
-  y = Array{Float64}(n,m)
-
-  @assert length(y0)==33
-  @assert length(parms)==114
-
-  ccall((:limstep_, fortranpath), Ptr{Array{Float64,2}},
-    (Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Int64}, Ptr{Int64}, Ptr{Float64}),
-    y, copy(y0), tspan, &n, &m, parms)
-  y
-end
-
-function gync(y0::Vector{Float64}, tspan::AbstractVector, parms::Vector{Float64})
-  gync(y0, collect(Float64, tspan), parms)
-end
-
-
 ### MergedChain
 
 """ memory efficient structure to represent the merged chain """
