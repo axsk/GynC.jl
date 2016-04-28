@@ -62,7 +62,7 @@ function model(c::ModelConfig)
 end
 
 function referencesolution(resolution=1)
-  sol = gync(refy0, collect(0:resolution:30.), allparms(refparms))
+  sol = gync(refy0, allparms(refparms), collect(0:resolution:30.))
   # since we get a (small) negative value for OvF, impeding the log transformation for the prior, set this to the next minimal value
   for i in 1:size(sol,1)
     sol[i, sol[i,:] .<= 0] = minimum(sol[i, sol[i,:] .> 0])
@@ -73,7 +73,7 @@ end
 """ loglikelihood (up to proport.) for the parameters given the patientdata """
 function llh(data::Matrix{Float64}, parms::Vector{Float64}, y0::Vector{Float64}, sigma::Real)
   tspan = Array{Float64}(collect(0:30))
-  y = gync(y0, tspan, parms)[measuredinds,:]
+  y = gync(y0, parms, tspan)[measuredinds,:]
   if any(isnan(y)) > 0
     #Base.warn("encountered nan in gync result")
     #try
@@ -119,3 +119,7 @@ function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; relprop=0
 
   sim = Mamba.mcmc(m, inp, inits, iters; mcmcargs...)
 end
+
+### Solve the GynCycle model
+
+gync_cvode(y0, parms, t) = Sundials.cvode((t,y,dy) -> gyncycle_rhs!(y,p,dy), y0, t)

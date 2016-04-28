@@ -66,7 +66,7 @@ const fortranpath = joinpath(dirname(@__FILE__),"..","deps","limex","GynC.so")
 
 """ Wrapper to the LIMEX solver for the GynC model 
 solve the model for the times t given initial condition y0 and parameters parms, and store the result in y"""
-function gync(y0::Vector{Float64}, tspan::Vector{Float64}, parms::Vector{Float64})
+function gync(y0::Vector{Float64}, parms::Vector{Float64}, tspan::Vector{Float64})
   n = 33
   m = length(tspan)
   y = Array{Float64}(n,m)
@@ -80,8 +80,8 @@ function gync(y0::Vector{Float64}, tspan::Vector{Float64}, parms::Vector{Float64
   y
 end
 
-function gync(y0::Vector{Float64}, tspan::AbstractVector, parms::Vector{Float64})
-  gync(y0, collect(Float64, tspan), parms)
+function gync(y0::Vector{Float64}, parms::Vector{Float64}, tspan::AbstractVector)
+  gync(y0, parms, collect(Float64, tspan))
 end
 
 
