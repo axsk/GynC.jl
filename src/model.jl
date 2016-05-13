@@ -13,13 +13,6 @@ const speciesnames   = include("const/speciesnames.jl")
 const parameternames = include("const/parameternames.jl")[sampledinds]
 const samplednames   = [parameternames; speciesnames]
 
-type ModelConfig
-  data::Matrix      # measurements
-  sigma_rho::Real   # measurement error / std for likelihood gaussian 
-  sigma_y0::Real    # y0 prior mixture component std = ref. solution std * sigma_y0
-  parms_bound::Vector # upper bound of flat parameter prior
-end
-
 ModelConfig(s::Subject; args...) = ModelConfig(data(s); args...)
 
 ModelConfig(data; sigma_rho=0.1, sigma_y0=1, parms_bound::Real=5) =
@@ -104,20 +97,34 @@ end
 distsquared = l2
 
 " simulate `iters` iteration of the markov chain corresponding to the model specified by the `ModelConfig`, with initial values `inity0` and `initparms` (defaulting to the reference solution). The initial proposal density at point x is a Log-normal distribution with median x standard deviation x*`relprop` " 
-function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; relprop=0.1, mcmcargs...)
+function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; relprop=0.1)
   m = model(c)
 
   nparms = length(inity0) + length(initparms)
-
   prop = log(1+(relprop^2)) * eye(nparms)
-
-  # TODO: try hmcmc
-  setsamplers!(m, [AMM([:parms, :logy0], prop, adapt=:all)])
 
   inp = Dict{Symbol,Any}()
   inits = [Dict{Symbol,Any}(:logy0 => log(inity0), :parms => initparms, :data => c.data)]
 
-  sim = Mamba.mcmc(m, inp, inits, iters; mcmcargs...)
+  setinputs!(m, inp)
+  setinits!(m, inits)
+  setsamplers!(m, [AMM([:parms, :logy0], prop, adapt=:all)])
+
+  sim = Array(Float64, iters, length(unlist(m, true)))
+  logpost = Array(Float64, iters)
+  logprior = Array(Float64, iters)
+
+  for i in 1:iters
+    sample!(m)
+    sim[i,:] = unlist(m, true)
+
+    # store the posterior and prior densities
+    logpost[i] = logpdf(m)
+    logprior[i] = logpdf(m[:logy0]) + logpdf(m[:parms])
+  end
+
+  #sim = Mamba.mcmc(m, inp, inits, iters; mcmcargs...)
+  Sampling(sim, logpost, logprior, m)
 end
 
 ### Solve the GynCycle model

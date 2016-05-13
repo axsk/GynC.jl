@@ -28,6 +28,23 @@ end
 
 data(s::Subject) = s.data
 
+
+type ModelConfig
+  data::Matrix      # measurements
+  sigma_rho::Real   # measurement error / std for likelihood gaussian 
+  sigma_y0::Real    # y0 prior mixture component std = ref. solution std * sigma_y0
+  parms_bound::Vector # upper bound of flat parameter prior
+end
+
+
+type Sampling
+  data
+  logprior
+  logpost
+  model
+end
+
+
 include("utils.jl")
 include("../data/lausanne.jl")
 include("../data/pfizer.jl")

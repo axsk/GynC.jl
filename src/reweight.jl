@@ -89,7 +89,7 @@ end
 A_comprehension(w,L) = product([sum([L[k,m]*w[k] for k=1:length(w)]) for m=1:size(L,2)])
 dA_comprehension(w,L) = [A(w,L) * sum([L[j,m] / sum([L[k,m]*w[k] for k in 1:length(w)]) for m in 1:size(L,2)]) for j in 1:length(w)]
 
-" posterior for the priors evaluated at w"
+" posterior for the priors evaluated at w "
 A(w::Vector, L::Matrix) = prod(L'*w) :: Real
 
 function dA(w::Vector, L::Matrix)
