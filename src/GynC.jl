@@ -27,6 +27,7 @@ end
 data(s::Subject) = s.data
 
 include("utils.jl")
+include("projectsimplex.jl")
 include("../data/lausanne.jl")
 include("../data/pfizer.jl")
 include("model.jl")
