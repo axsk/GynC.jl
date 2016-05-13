@@ -60,23 +60,12 @@ function reweight!(w::DenseVector, L::DenseMatrix)
   K = size(L,1)
   M = size(L,2)
 
-  #= performing slower?
-  norm = Array{Float64}(M)
-  @inbounds for m=1:M
-    s = 0.
-    @simd for k=1:K
-      s += w[k] * L[k,m]
-    end
-    norm[m] = s # rho(z_m)
-  end
-  =#
-
-  norm = L' * w
+  norms = L' * w
 
   @inbounds for k=1:K
     s = 0.
     @simd for m=1:M
-      s += L[k,m] / norm[m]
+      s += L[k,m] / norms[m]
     end
     w[k] = w[k] / M * s
   end
@@ -87,7 +76,11 @@ end
 ### Maximal Likelihood / Posterior for the Prior ###
 # TODO: use nonlinear optimizer
 
-" posterior for the priors evaluated at w "
+A_comprehension(w,L) = product([sum([L[k,m]*w[k] for k=1:length(w)]) for m=1:size(L,2)])
+dA_comprehension(w,L) = [A(w,L) * sum([L[j,m] / sum([L[k,m]*w[k] for k in 1:length(w)]) for m in 1:size(L,2)]) for j in 1:length(w)]
+
+" posterior for the priors evaluated at w, 
+i.e. the probability P(data|w) "
 A(w::Vector, L::Matrix) = prod(L'*w) :: Real
 
 function dA(w::Vector, L::Matrix)
