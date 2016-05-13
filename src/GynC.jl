@@ -38,11 +38,11 @@ end
 
 
 type Sampling
-  data
-  logprior
-  logllh
-  logpost
-  model
+  samples::Array
+  logprior::Vector
+  logllh::Vector
+  logpost::Vector
+  model::Mamba.Model
 end
 
 

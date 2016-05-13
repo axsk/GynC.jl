@@ -15,11 +15,12 @@ type GynCChain <: WeightedChain
   likelihoods::AbstractMatrix
 end
 
-" construct the GynCChain computing the likelihoods for the given `samples` (row = sample, col = sampledparam) given `datas` with error `sigma` "
-function GynCChain(chain::Matrix, datas::Vector{Matrix}, sigma::Real)
-  GynCChain(chain, ones(size(chain, 1)), likelihoods(chain, datas, sigma))
-end
-GynCChain(c::Vector, w, l) = GynCChain(reshape(c,length(c),1), w, l)
+function GynCChain(samplings::Sampling...; sigma::Real=.1)
+  x = vcat([s.samples for s in samplings]...)
+  w = ones(size(x, 1))
+  l = likelihoods(x, Matrix[s.model[:data].value for s in samplings], sigma)
+  GynCChain(x,w,l)
+end 
 
 " compute the likelihood matrix for given chains, data, sigma) "
 function likelihoods(chain::AbstractMatrix, data::Vector{Matrix}, sigma::Real)
@@ -44,9 +45,9 @@ end
 " given a sample, extend to all model parameters " 
 function sampletoparms(sample::Vector)
   np = length(sampledinds)
-  allparms = allparms(sample[1:np])
+  parms = allparms(sample[1:np])
   y0 = sample[np+1:end]
-  allparms, y0
+  parms, y0
 end
 
 
