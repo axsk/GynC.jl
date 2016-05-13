@@ -47,11 +47,7 @@ function model(c::ModelConfig)
       (y0, parms) -> DensityDistribution(size(c.data),
                        data -> cachedllh(data, allparms(parms.value), y0.value, c.sigma_rho),
                        log=true),
-      false),
-
-    loglikelihood = Logical(
-      (y0, parms, data) -> cachedllh(data.value, allparms(parms.value), y0.value, c.sigma_rho))
-  )
+      false))
 end
 
 function referencesolution(resolution=1)
@@ -97,7 +93,7 @@ end
 distsquared = l2
 
 " simulate `iters` iteration of the markov chain corresponding to the model specified by the `ModelConfig`, with initial values `inity0` and `initparms` (defaulting to the reference solution). The initial proposal density at point x is a Log-normal distribution with median x standard deviation x*`relprop` " 
-function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; relprop=0.1)
+function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; relprop=0.1, thin=1)
   m = model(c)
 
   nparms = length(inity0) + length(initparms)
@@ -110,21 +106,25 @@ function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; relprop=0
   setinits!(m, inits)
   setsamplers!(m, [AMM([:parms, :logy0], prop, adapt=:all)])
 
-  sim = Array(Float64, iters, length(unlist(m, true)))
-  logpost = Array(Float64, iters)
-  logprior = Array(Float64, iters)
+  n = round(Int, iters/thin, RoundDown)
+  sim = Array(Float64, n, length(unlist(m, true)))
+  logprior = Array(Float64, n)
+  logllh = Array(Float64, n)
+  logpost = Array(Float64, n)
 
-  for i in 1:iters
-    sample!(m)
+  for i in 1:n
+    for j in 1:thin
+      sample!(m)
+    end
     sim[i,:] = unlist(m, true)
 
     # store the posterior and prior densities
-    logpost[i] = logpdf(m)
     logprior[i] = logpdf(m[:logy0]) + logpdf(m[:parms])
+    logllh[i]  = logpdf(m[:data])
+    logpost[i] = logpdf(m)
   end
 
-  #sim = Mamba.mcmc(m, inp, inits, iters; mcmcargs...)
-  Sampling(sim, logpost, logprior, m)
+  Sampling(sim, logprior, logllh, logpost, m)
 end
 
 ### Solve the GynCycle model

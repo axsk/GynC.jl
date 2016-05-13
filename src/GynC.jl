@@ -40,6 +40,7 @@ end
 type Sampling
   data
   logprior
+  logllh
   logpost
   model
 end
