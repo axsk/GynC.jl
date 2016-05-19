@@ -9,7 +9,7 @@ function WeightedChain(samplings::Sampling...; sigma::Real=.1)
   samples = vcat([s.samples for s in samplings]...)
   weights = ones(size(samples, 1)) / size(samples, 1)
   lhs = likelihoods(samples, Matrix[s.model[:data].value for s in samplings], sigma)
-  prior = exp(samplings[1].logprior)
+  prior = exp(vcat([s.logprior for s in samplings]...))
   density = mean(lhs, 2) .* prior |> vec
   WeightedChain(samples, lhs, weights, density)
 end 
@@ -112,4 +112,7 @@ end
 
 " objective function: log of probability * entropy "
 phih(w, pi1, L) = log(A(w, L)) + entropy(w, pi1)
-entropy(w, pi1) = -dot(w, log(w .* pi1))
+function entropy(w, pi1)
+  nonzero = w.!=0
+  -dot(w[nonzero], (w .* pi1)[nonzero])
+end
