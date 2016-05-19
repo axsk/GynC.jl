@@ -24,12 +24,15 @@ function WeightedChain(samplings::Sampling...; sigma::Real=.1)
 
   # compute likelihoods for all data
   lhs = likelihoods(samples, Matrix[s.model[:data].value for s in samplings], sigma)
+  # and normalize for each each datum
+  lhs = lhs ./ sum(lhs, 1)
 
   # copy the prior destribution
   prior = vcat(([exp(s.logprior) for s in samplings]...))
 
-  # and compute the mean posterior
+  # and compute and normalize the mean posterior
   density = mean(lhs, 2) .* prior |> vec
+  density = density / sum(density)
 
   WeightedChain(samples, lhs, weights, density)
 end 
