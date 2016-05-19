@@ -1,35 +1,47 @@
+##### Data structures #####
+
+# WeightedChain represents a weighted sampling of a distribution
 type WeightedChain
+  # sample coordinates in each row
   samples::Matrix
+
+  # likelihoods for the different datas in each column 
   likelihoods::Matrix
+
+  # the corresponding weights 
   weights::Vector
+
+  # the density of the initial sampling, for e.g. entropy calculation
   density::Vector
 end
 
 function WeightedChain(samplings::Sampling...; sigma::Real=.1)
+  # concetante all samples
   samples = vcat([s.samples for s in samplings]...)
+
+  # initialize uniform weights
   weights = ones(size(samples, 1)) / size(samples, 1)
+
+  # compute likelihoods for all data
   lhs = likelihoods(samples, Matrix[s.model[:data].value for s in samplings], sigma)
-  prior = exp(vcat([s.logprior for s in samplings]...))
+
+  # copy the prior destribution
+  prior = vcat(([exp(s.logprior) for s in samplings]...))
+
+  # and compute the mean posterior
   density = mean(lhs, 2) .* prior |> vec
+
   WeightedChain(samples, lhs, weights, density)
 end 
 
-function reweight!(c::WeightedChain) 
-  reweight!(c.weights, c.likelihoods)
-  c
-end
+### wrappers ###
 
-function euler_A!(c::WeightedChain, h::Real) 
-  c.weights = euler_A(c.weights, c.likelihoods, h)
-  c
-end
-
-function euler_phih!(c::WeightedChain, h)
-  c.weights = euler_phih(c.weights, c.density, c.likelihoods, h)
-  c
-end
+reweight!(c::WeightedChain) = (reweight!(c.weights, c.likelihoods); c)
+euler_A!(c::WeightedChain, h::Real) = (c.weights = euler_A(c.weights, c.likelihoods, h); c)
+euler_phih!(c::WeightedChain, h) = (c.weights = euler_phih(c.weights, c.density, c.likelihoods, h); c)
 
 ### Likelihood computation
+## TODO: move this to model.jl
 
 " compute the likelihood matrix for given chains, data, sigma) "
 function likelihoods(chain::AbstractMatrix, data::Vector{Matrix}, sigma::Real)
@@ -60,11 +72,19 @@ function sampletoparms(sample::Vector)
 end
 
 
-### Self-consistency iteration / EM-Algorithm
-### Old reweighting, using the non-orthogonal projection ###
+##### Algorithms #####
 
-" reweight the given `WeightedChain` according to its `likelihoods` "
-function reweight!(w::DenseVector, L::DenseMatrix)
+### Self-consistency iteration / EM-Algorithm ###
+
+# iterative application of the prior estimation step
+# which is equivalent to the expectation-maximization of the prior π
+
+#                L(k|m) * w(k) 
+# w(k) <-  ∑ ---------------------
+#            M * ∑ L(k'|m) * w(k')
+
+@deprecated reweight!(w, L) emiteration!(w, L)
+function emiteration!(w::DenseVector, L::DenseMatrix)
   K = size(L,1)
   M = size(L,2)
 
@@ -81,38 +101,57 @@ function reweight!(w::DenseVector, L::DenseMatrix)
 end
 
 
-### Maximal Likelihood for the Prior ###
+### Hyperlikelihood optimization ###
 
-" gradient ascend of A(w) projected onto the simplex, returning the next step for stepsize h " 
-euler_A(w, L, h) = projectsimplex!(w + dA(w, L) * h)
-
-" posterior for the priors evaluated at w, i.e. the probability P(data|w) "
+# We can instead try to immediately optimize the hyperlikelihood
+# A(π) := L(z|π) = ∏ L(z_m|π) = ∏ ∫ L(z_m|p,π) * P(p|π)
+# A(w) := ∏ L_kj * w_k
 A(w::Vector, L::Matrix) = prod(L'*w) :: Real
 
-" derivative of A "
+# with derivative
+# dA(w)_k = A * L_kj / (L_ij * w_i)
 function dA(w::Vector, L::Matrix)
   norms = L'*w
-  # TODO: check A not appearing
   A = prod(norms)
   inv = 1 ./ norms
-  (L * inv) :: Vector
+  A * (L * inv) :: Vector
 end
 
+# a direct approach is to 
+# project euler steps onto the simplex
 
-### Posterior iteration for the prior with entropy hyperprior ###
+euler_A(w, L, h) = projectsimplex!(w + dA(w, L) * h)
 
-import ForwardDiff
 
-" gradient ascend of A(w) with entropy weighting "
+### Entropy weighted Hyperposterior optimization ###
+
+# since this results merely in a maximum likelihood estimate, which in application often is irregular/unregular? 
+# one may try to regularize this with an entropy based prior
+# P(π) = H(π) = ∫ π(x) * log(π(x)) dx
+
+function entropy(weights, density)
+  h = 0
+  for i in eachindex(weights)
+    p = weights[i] * density[i]
+    p == 0 && continue
+    h += weights[i] * log(p)
+  end
+  -h
+end
+
+# and then optimize the resulting 
+# posterior P(π|z) ~=  P(z|π) * H(π)
+
+## unser objective hier is jetzt eher log(A(π) * e^H(π)), warum?
+phih(w, pi1, L) = log(A(w, L)) + entropy(w, pi1)
+
+# with
+# the euler-projection iteration 
+
 function euler_phih(w, pi1, L, h)
   f(w) = phih(w, pi1, L)
   g = ForwardDiff.gradient(f, w)
   projectsimplex!(w + g * h)
 end
 
-" objective function: log of probability * entropy "
-phih(w, pi1, L) = log(A(w, L)) + entropy(w, pi1)
-function entropy(w, pi1)
-  nonzero = w.!=0
-  -dot(w[nonzero], (w .* pi1)[nonzero])
-end
+# to obtain the MAP of the Hyperposterior.

@@ -53,6 +53,8 @@ include("../data/pfizer.jl")
 include("gyncycle.jl")
 include("model.jl")
 include("io.jl")
+
+import ForwardDiff # to compute derivative of objective
 include("reweight.jl")
 
 @require PyPlot include("plot.jl")
