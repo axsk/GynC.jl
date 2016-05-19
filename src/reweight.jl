@@ -83,7 +83,7 @@ end
 # w(k) <-  ∑ ---------------------
 #            M * ∑ L(k'|m) * w(k')
 
-@deprecated reweight!(w, L) emiteration!(w, L)
+@deprecate reweight!(w, L) emiteration!(w, L)
 function emiteration!(w::DenseVector, L::DenseMatrix)
   K = size(L,1)
   M = size(L,2)
@@ -130,7 +130,7 @@ euler_A(w, L, h) = projectsimplex!(w + dA(w, L) * h)
 # P(π) = H(π) = ∫ π(x) * log(π(x)) dx
 
 function entropy(weights, density)
-  h = 0
+  h = 0.
   for i in eachindex(weights)
     p = weights[i] * density[i]
     p == 0 && continue
