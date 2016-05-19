@@ -15,9 +15,6 @@ export mcmc, batch
 export ModelConfig, Lausanne, Pfizer
 export load, save
 
-export WeightedChain
-export SimpleWeightedChain, GynCChain
-export gradient_simplex!, reweight!
 
 const datadir = joinpath(dirname(@__FILE__), "..", "data")
 
@@ -55,7 +52,8 @@ include("model.jl")
 include("io.jl")
 
 import ForwardDiff # to compute derivative of objective
-include("reweight.jl")
+include("priorestimation.jl")
+export WeightedChain
 
 @require PyPlot include("plot.jl")
 
