@@ -74,11 +74,11 @@ function reweight!(w::DenseVector, L::DenseMatrix)
 end
 
 
-### Maximal Likelihood / Posterior for the Prior ###
+### Maximal Likelihood for the Prior ###
 
-" posterior for the priors evaluated at w, 
-i.e. the probability P(data|w) "
+" posterior for the priors evaluated at w, i.e. the probability P(data|w) "
 A(w::Vector, L::Matrix) = prod(L'*w) :: Real
+
 
 function dA(w::Vector, L::Matrix)
   norms = L'*w
@@ -88,24 +88,6 @@ function dA(w::Vector, L::Matrix)
   (L * inv) :: Vector
 end
 
-" compute the entropy of `pi_k` given `pi_1` and `w_k` "
-entropy(pi_1, w) = -dot(w, log(pi_1.*w))
-
-" objective function: log of probability * entropy "
-phih(w, pi_1, L) = log(A(w, L)) + entropy(pi_1, w)
-
-import ForwardDiff
-
-function euler_phih(w, pi_1, L, h)
-  f(w) = phih(w, pi_1, L)
-  g = ForwardDiff.gradient(f, w)
-  projectsimplex!(w + g * h)
-end
-
-    
-# TODO: use nonlinear optimizer
-# to optimize phih inside the simplex
-
 " gradient ascend of A(w) projected onto the simplex, returning the next step for stepsize h " 
 function euler_A!(c::WeightedChain, h::Real)
   c.weights = euler_A(c.weights, c.likelihoods, h)
@@ -113,3 +95,38 @@ function euler_A!(c::WeightedChain, h::Real)
 end
 
 euler_A(w, L, h) = projectsimplex!(w + dA(w, L) * h)
+
+### Maximal posterior for the prior with entropy hyperprior
+
+type WeightedDensity
+  likelihoods::Matrix
+  weights::Vector
+  density::Vector
+end
+
+function WeightedDensity(L::Matrix, prior::Vector) 
+  n = size(L, 1)
+  weights = ones(n) / n
+  density = mean(L, 2) .* prior |> vec
+  DensityWeightedChain(L, weights, density) 
+end
+
+density(wd::WeightedDensity) = wd.density .* wd.weights
+
+entropy(wd::WeightedDensity) = -dot(wd.weights, log(density(wd)))
+
+
+" objective function: log of probability * entropy "
+phih(wd::WeightedDensity) = log(A(wd.weights, wd.llh)) + entropy(wd)
+
+import ForwardDiff
+
+function euler_phih(w, pi1, L, h)
+  f(w) = phih(w, pi1, L)
+  g = ForwardDiff.gradient(f, w)
+  projectsimplex!(w + g * h)
+end
+
+    
+# TODO: use nonlinear optimizer
+# to optimize phih inside the simplex
