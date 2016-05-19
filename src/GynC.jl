@@ -40,7 +40,7 @@ end
 type Sampling
   samples::Array
   logprior::Vector
-  logllh::Vector
+  loglikelihood::Vector
   logpost::Vector
   model::Mamba.Model
 end

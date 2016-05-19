@@ -1,26 +1,35 @@
-abstract WeightedChain
-
-type SimpleWeightedChain <: WeightedChain
-  weights::AbstractVector
-  likelihoods::AbstractMatrix # row = param, col = subject
+type WeightedChain
+  samples::Matrix
+  likelihoods::Matrix
+  weights::Vector
+  density::Vector
 end
 
-
-### GynCChain constructors for the GynC model ###
-# TODO: move this section to model.jl / create a WeightedMambaChain
-
-type GynCChain <: WeightedChain
-  chain::AbstractMatrix
-  weights::AbstractVector
-  likelihoods::AbstractMatrix
-end
-
-function GynCChain(samplings::Sampling...; sigma::Real=.1)
-  x = vcat([s.samples for s in samplings]...)
-  w = ones(size(x, 1))
-  l = likelihoods(x, Matrix[s.model[:data].value for s in samplings], sigma)
-  GynCChain(x,w,l)
+function WeightedChain(samplings::Sampling...; sigma::Real=.1)
+  samples = vcat([s.samples for s in samplings]...)
+  weights = ones(size(samples, 1)) / size(samples, 1)
+  lhs = likelihoods(samples, Matrix[s.model[:data].value for s in samplings], sigma)
+  prior = exp(samplings[1].logprior)
+  density = mean(lhs, 2) .* prior |> vec
+  WeightedChain(samples, lhs, weights, density)
 end 
+
+function reweight!(c::WeightedChain) 
+  reweight!(c.weights, c.likelihoods)
+  c
+end
+
+function euler_A!(c::WeightedChain, h::Real) 
+  c.weights = euler_A(c.weights, c.likelihoods, h)
+  c
+end
+
+function euler_phih!(c::WeightedChain, h)
+  c.weights = euler_phih(c.weights, c.density, c.likelihoods, h)
+  c
+end
+
+### Likelihood computation
 
 " compute the likelihood matrix for given chains, data, sigma) "
 function likelihoods(chain::AbstractMatrix, data::Vector{Matrix}, sigma::Real)
@@ -32,14 +41,14 @@ function likelihoods(chain::AbstractMatrix, data::Vector{Matrix}, sigma::Real)
       likelihoods[k,m] = likelihood(data[m], chain[k,:]|>vec, sigma)
     end
   end
-  likelihoods
+  Array(likelihoods)
 end
 
 # TODO: base computation on model
 " compute the likelihoods of the `sample` for the given `data` with error `sigma` "
 function likelihood(data::Matrix, sample::Vector, sigma::Real)
   parms, y0 = sampletoparms(sample)
-  exp(llh(data, parms, y0, sigma))
+  lh = exp(llh(data, parms, y0, sigma))
 end
 
 " given a sample, extend to all model parameters " 
@@ -55,8 +64,6 @@ end
 ### Old reweighting, using the non-orthogonal projection ###
 
 " reweight the given `WeightedChain` according to its `likelihoods` "
-reweight!(c::WeightedChain) = (reweight!(c.weights, c.likelihoods); c)
-
 function reweight!(w::DenseVector, L::DenseMatrix)
   K = size(L,1)
   M = size(L,2)
@@ -76,10 +83,13 @@ end
 
 ### Maximal Likelihood for the Prior ###
 
+" gradient ascend of A(w) projected onto the simplex, returning the next step for stepsize h " 
+euler_A(w, L, h) = projectsimplex!(w + dA(w, L) * h)
+
 " posterior for the priors evaluated at w, i.e. the probability P(data|w) "
 A(w::Vector, L::Matrix) = prod(L'*w) :: Real
 
-
+" derivative of A "
 function dA(w::Vector, L::Matrix)
   norms = L'*w
   # TODO: check A not appearing
@@ -88,45 +98,18 @@ function dA(w::Vector, L::Matrix)
   (L * inv) :: Vector
 end
 
-" gradient ascend of A(w) projected onto the simplex, returning the next step for stepsize h " 
-function euler_A!(c::WeightedChain, h::Real)
-  c.weights = euler_A(c.weights, c.likelihoods, h)
-  c
-end
 
-euler_A(w, L, h) = projectsimplex!(w + dA(w, L) * h)
-
-### Maximal posterior for the prior with entropy hyperprior
-
-type WeightedDensity
-  likelihoods::Matrix
-  weights::Vector
-  density::Vector
-end
-
-function WeightedDensity(L::Matrix, prior::Vector) 
-  n = size(L, 1)
-  weights = ones(n) / n
-  density = mean(L, 2) .* prior |> vec
-  DensityWeightedChain(L, weights, density) 
-end
-
-density(wd::WeightedDensity) = wd.density .* wd.weights
-
-entropy(wd::WeightedDensity) = -dot(wd.weights, log(density(wd)))
-
-
-" objective function: log of probability * entropy "
-phih(wd::WeightedDensity) = log(A(wd.weights, wd.llh)) + entropy(wd)
+### Posterior iteration for the prior with entropy hyperprior ###
 
 import ForwardDiff
 
+" gradient ascend of A(w) with entropy weighting "
 function euler_phih(w, pi1, L, h)
   f(w) = phih(w, pi1, L)
   g = ForwardDiff.gradient(f, w)
   projectsimplex!(w + g * h)
 end
 
-    
-# TODO: use nonlinear optimizer
-# to optimize phih inside the simplex
+" objective function: log of probability * entropy "
+phih(w, pi1, L) = log(A(w, L)) + entropy(w, pi1)
+entropy(w, pi1) = -dot(w, log(w .* pi1))
