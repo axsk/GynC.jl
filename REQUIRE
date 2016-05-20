@@ -4,3 +4,4 @@ HDF5
 DataFrames
 JLD
 Requires
+Sundials

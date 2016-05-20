@@ -1,9 +1,7 @@
 # Unit test
 
-w = rand(3)
-w = w / sum(w)
-wc = SimpleWeightedChain(w, rand(3,2))
+wc = WeightedChain(rand(100,3), rand(100,5), rand(100))
 
-euler_A!(wc,1)
-error = abs(sum(wc.weights) - 1)
-error < 1e-6 || error("gradient_simplex result has norm ", abs(sum(wc.weights)))
+emiteration!(wc)
+euler_A!(wc, 1)
+euler_phih!(wc, 1)

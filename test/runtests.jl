@@ -2,5 +2,5 @@ using GynC
 
 sim = mcmc(ModelConfig(Lausanne(1)), 10)
 
-include("reweight.jl")
+include("priorestimation.jl")
 include("io.jl")

@@ -54,6 +54,7 @@ include("io.jl")
 import ForwardDiff # to compute derivative of objective
 include("priorestimation.jl")
 export WeightedChain
+export emiteration!, euler_A!, euler_phih!
 
 @require PyPlot include("plot.jl")
 
