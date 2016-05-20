@@ -5,3 +5,4 @@ DataFrames
 JLD
 Requires
 Sundials
+ForwardDiff

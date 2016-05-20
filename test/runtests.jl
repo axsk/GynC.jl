@@ -1,6 +1,5 @@
 using GynC
 
-sim = mcmc(ModelConfig(Lausanne(1)), 10)
-
 include("priorestimation.jl")
-include("io.jl")
+
+include("../examples/gc/runtests.jl")

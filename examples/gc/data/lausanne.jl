@@ -1,7 +1,7 @@
 Lausanne(id::Int) = Subject(lausannedata(id), (:lausanne, id))
 
 function lausannedata(caseid::Int)
-  dir = joinpath(datadir,"lausaunne")
+  dir = joinpath(dirname(@__FILE__), "lausaunne")
   daynames = map(symbol, vcat(["_$i" for i = 16:-1:1], ["x$i" for i=0:15]))
   hormonefile = ["lh.csv", "fsh.csv", "oestr.csv", "prog.csv"]
 
