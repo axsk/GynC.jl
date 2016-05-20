@@ -63,14 +63,6 @@ function likelihood(data::Matrix, sample::Vector, sigma::Real)
   lh = exp(llh(data, parms, y0, sigma))
 end
 
-" given a sample, extend to all model parameters " 
-function sampletoparms(sample::Vector)
-  np = length(sampledinds)
-  parms = allparms(sample[1:np])
-  y0 = sample[np+1:end]
-  parms, y0
-end
-
 
 ##### Algorithms #####
 

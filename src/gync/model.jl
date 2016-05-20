@@ -1,35 +1,5 @@
-# indices for measured variables: LH, FSH, E2, P4
-const measuredinds = [2,7,24,25]
-const hillinds     = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 59, 65, 95, 98, 101, 103]
-const sampledinds  = deleteat!(collect(1:103), hillinds)
-
-const refy0       = include("const/refy0.jl")
-const refallparms = include("const/refparms.jl")
-const refparms    = refallparms[sampledinds]
-
-allparms(parms::Vector) = (p = copy(refallparms); p[sampledinds] = parms; p)
-
-const speciesnames   = include("const/speciesnames.jl")
-const parameternames = include("const/parameternames.jl")[sampledinds]
-const samplednames   = [parameternames; speciesnames]
-
-ModelConfig(s::Subject; args...) = ModelConfig(data(s); args...)
-
-ModelConfig(data; sigma_rho=0.1, sigma_y0=1, parms_bound::Real=5) =
-  ModelConfig(data, sigma_rho, sigma_y0, parms_bound * refparms)
-
-function gaussianmixture(y::Matrix, stdfactor=1)
-   stds = mapslices(std, y, 2) * stdfactor |> vec
-   vars = abs2(stds)
-   normals = mapslices(yt->MvNormal(yt, vars), y, 1) |> vec
-   MixtureModel(normals)
-end
-
-# HOTFIX for missing insupport method for MixtureModel
-insupport(d::Distributions.MultivariateMixture, x::AbstractVector) = true
-
 """ construct the mamba model """
-function model(c::ModelConfig)
+function model(c::GynCConfig)
   cachedllh = cache(llh,3)
 
   Model(
@@ -92,40 +62,7 @@ end
 
 distsquared = l2
 
-" simulate `iters` iteration of the markov chain corresponding to the model specified by the `ModelConfig`, with initial values `inity0` and `initparms` (defaulting to the reference solution). The initial proposal density at point x is a Log-normal distribution with median x standard deviation x*`relprop` " 
-function mcmc(c::ModelConfig, iters, inity0=refy0, initparms=refparms; relprop=0.1, thin=1)
-  m = model(c)
 
-  nparms = length(inity0) + length(initparms)
-  prop = log(1+(relprop^2)) * eye(nparms)
-
-  inp = Dict{Symbol,Any}()
-  inits = [Dict{Symbol,Any}(:logy0 => log(inity0), :parms => initparms, :data => c.data)]
-
-  setinputs!(m, inp)
-  setinits!(m, inits)
-  setsamplers!(m, [AMM([:parms, :logy0], prop, adapt=:all)])
-
-  n = round(Int, iters/thin, RoundDown)
-  sim = Array(Float64, n, length(unlist(m, true)))
-  logprior = Array(Float64, n)
-  logllh = Array(Float64, n)
-  logpost = Array(Float64, n)
-
-  for i in 1:n
-    for j in 1:thin
-      sample!(m)
-    end
-    sim[i,:] = unlist(m, true)
-
-    # store the posterior and prior densities
-    logprior[i] = logpdf(m[:logy0]) + logpdf(m[:parms])
-    logllh[i]  = logpdf(m[:data])
-    logpost[i] = logpdf(m)
-  end
-
-  Sampling(sim, logprior, logllh, logpost, m)
-end
 
 ### Solve the GynCycle model
 
@@ -149,5 +86,3 @@ function gync_limex(y0::Vector{Float64}, parms::Vector{Float64}, tspan::Vector{F
     y, copy(y0), tspan, &n, &m, parms)
   y
 end
-
-gync = gync_cvode
