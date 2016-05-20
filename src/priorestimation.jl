@@ -15,31 +15,28 @@ type WeightedChain
   density::Vector
 end
 
+# construct the WeightedChain corresponding to the concatenated samples and respective data
 function WeightedChain(samplings::Sampling...; sigma::Real=.1)
-  # concetante all samples
   samples = vcat([s.samples for s in samplings]...)
+  prior   = vcat(([exp(s.logprior) for s in samplings]...))
+  lhs     = likelihoods(samples, Matrix[s.model[:data].value for s in samplings], sigma)
+  WeightedChain(samples, lhs, prior)
+end
 
-  # initialize uniform weights
+# construct the WeightedChaind corresponding to the given likelihoods and priors
+function WeightedChain(samples::Matrix, lhs::Matrix, prior::Vector)
   weights = ones(size(samples, 1)) / size(samples, 1)
-
-  # compute likelihoods for all data
-  lhs = likelihoods(samples, Matrix[s.model[:data].value for s in samplings], sigma)
-  # and normalize for each each datum
-  lhs = lhs ./ sum(lhs, 1)
-
-  # copy the prior destribution
-  prior = vcat(([exp(s.logprior) for s in samplings]...))
-
-  # and compute and normalize the mean posterior
+  lhs     = lhs ./ sum(lhs, 1) # normalize for stability
   density = mean(lhs, 2) .* prior |> vec
-  density = density / sum(density)
-
+  density = density / sum(density) # normalize for entropy
   WeightedChain(samples, lhs, weights, density)
-end 
+end
+
+  
 
 ### wrappers ###
 
-reweight!(c::WeightedChain) = (reweight!(c.weights, c.likelihoods); c)
+emiteration!(c::WeightedChain) = (emiteration!(c.weights, c.likelihoods); c)
 euler_A!(c::WeightedChain, h::Real) = (c.weights = euler_A(c.weights, c.likelihoods, h); c)
 euler_phih!(c::WeightedChain, h) = (c.weights = euler_phih(c.weights, c.density, c.likelihoods, h); c)
 
