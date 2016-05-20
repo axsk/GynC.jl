@@ -2,25 +2,10 @@
 
 # WeightedChain represents a weighted sampling of a distribution
 type WeightedChain
-  # sample coordinates in each row
-  samples::Matrix
-
-  # likelihoods for the different datas in each column 
-  likelihoods::Matrix
-
-  # the corresponding weights 
-  weights::Vector
-
-  # the density of the initial sampling, for e.g. entropy calculation
-  density::Vector
-end
-
-# construct the WeightedChain corresponding to the concatenated samples and respective data
-function WeightedChain(samplings::Sampling...; sigma::Real=.1)
-  samples = vcat([s.samples for s in samplings]...)
-  prior   = vcat(([exp(s.logprior) for s in samplings]...))
-  lhs     = likelihoods(samples, Matrix[s.model[:data].value for s in samplings], sigma)
-  WeightedChain(samples, lhs, prior)
+  samples::Matrix     # sample coordinates in each row
+  likelihoods::Matrix # likelihoods for the different datas in each column 
+  weights::Vector     # the corresponding weights 
+  density::Vector     # the density of the initial sampling, for e.g. entropy calculation
 end
 
 # construct the WeightedChaind corresponding to the given likelihoods and priors
@@ -32,36 +17,11 @@ function WeightedChain(samples::Matrix, lhs::Matrix, prior::Vector)
   WeightedChain(samples, lhs, weights, density)
 end
 
-  
-
 ### wrappers ###
 
 emiteration!(c::WeightedChain) = (emiteration!(c.weights, c.likelihoods); c)
 euler_A!(c::WeightedChain, h::Real) = (c.weights = euler_A(c.weights, c.likelihoods, h); c)
 euler_phih!(c::WeightedChain, h) = (c.weights = euler_phih(c.weights, c.density, c.likelihoods, h); c)
-
-### Likelihood computation
-## TODO: move this to model.jl
-
-" compute the likelihood matrix for given chains, data, sigma) "
-function likelihoods(chain::AbstractMatrix, data::Vector{Matrix}, sigma::Real)
-  K = size(chain, 1)
-  M = length(data)
-  likelihoods = SharedArray(Float64,K,M)
-  @sync @parallel for k = 1:K
-    for m = 1:M
-      likelihoods[k,m] = likelihood(data[m], chain[k,:]|>vec, sigma)
-    end
-  end
-  Array(likelihoods)
-end
-
-# TODO: base computation on model
-" compute the likelihoods of the `sample` for the given `data` with error `sigma` "
-function likelihood(data::Matrix, sample::Vector, sigma::Real)
-  parms, y0 = sampletoparms(sample)
-  lh = exp(llh(data, parms, y0, sigma))
-end
 
 
 ##### Algorithms #####

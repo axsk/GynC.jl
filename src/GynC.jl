@@ -8,24 +8,11 @@ using Requires
 import Sundials
 import ForwardDiff # to compute derivative of objective
 
-export Config, Lausanne, Pfizer
 
-type Sampling
-  samples::Array
-  logprior::Vector
-  loglikelihood::Vector
-  logpost::Vector
-  config::Config
-end
-
-include("gync/gync.jl")
-
-export GynCConfig
-export mcmc, batch
-export load, save
 
 include("projectsimplex.jl")
 include("priorestimation.jl")
+include("gync/gync.jl")
 
 export WeightedChain
 export emiteration!, euler_A!, euler_phih!

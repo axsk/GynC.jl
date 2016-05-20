@@ -1,3 +1,24 @@
+# construct the WeightedChain corresponding to the concatenated samples and respective data
+function WeightedChain(samplings::Sampling...; sigma::Real=.1)
+  samples = vcat([s.samples for s in samplings]...)
+  prior   = vcat(([exp(s.logprior) for s in samplings]...))
+  lhs     = likelihoods(samples, Matrix[s.model[:data].value for s in samplings], sigma)
+  WeightedChain(samples, lhs, prior)
+end
+
+### model tools ###
+
+allparms(parms::Vector) = (p = copy(refallparms); p[sampledinds] = parms; p)
+
+" given a sample, extend to all model parameters " 
+function sampletoparms(sample::Vector)
+  np = length(sampledinds)
+  parms = allparms(sample[1:np])
+  y0 = sample[np+1:end]
+  parms, y0
+end
+
+
 ### Cache for likelihood evaluation ###
 
 """ return memoized version of f, caching the last n calls' results (overwriting on same-argument calls) """

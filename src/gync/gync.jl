@@ -1,3 +1,10 @@
+export Lausanne, Pfizer
+export GynCConfig
+export mcmc, batch
+export load, save
+
+### Constants ### 
+
 # indices for measured variables: LH, FSH, E2, P4
 const measuredinds = [2,7,24,25]
 const hillinds     = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 59, 65, 95, 98, 101, 103]
@@ -8,19 +15,12 @@ const refallparms = include("refparms.jl")
 const refparms    = refallparms[sampledinds]
 const refinit     = vcat(refparms, refy0)
 
-allparms(parms::Vector) = (p = copy(refallparms); p[sampledinds] = parms; p)
 
 const speciesnames   = include("speciesnames.jl")
 const parameternames = include("parameternames.jl")[sampledinds]
 const samplednames   = [parameternames; speciesnames]
 
-" given a sample, extend to all model parameters " 
-function sampletoparms(sample::Vector)
-  np = length(sampledinds)
-  parms = allparms(sample[1:np])
-  y0 = sample[np+1:end]
-  parms, y0
-end
+### types ###
 
 abstract Config
 
@@ -41,6 +41,13 @@ GynCConfig(s::Subject; args...) = GynCConfig(data(s); args...)
 GynCConfig(data; sigma_rho=0.1, sigma_y0=1, parms_bound::Real=5, relprop=0.1, thin=1, init=refinit) =
   GynCConfig(data, sigma_rho, sigma_y0, parms_bound * refparms, relprop, thin, init)
 
+type Sampling
+  samples::Array
+  logprior::Vector
+  loglikelihood::Vector
+  logpost::Vector
+  config::Config
+end
 
 const datadir = joinpath(dirname(@__FILE__), "..", "data")
 
