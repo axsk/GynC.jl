@@ -91,4 +91,4 @@ end
 ### Solve the GynCycle model
 
 " sundials cvode solution to the gyncycle model "
-gync_cvode(y0, p, t) = Sundials.cvode((t,y,dy) -> gyncycle_rhs!(y,p,dy), y0, t)'
+gync(y0, p, t) = Sundials.cvode((t,y,dy) -> gyncycle_rhs!(y,p,dy), y0, t)'

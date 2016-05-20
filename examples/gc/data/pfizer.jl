@@ -5,7 +5,8 @@ Pfizer(id::Int)   = Subject(pfizerdata()[id], (:pfizer, id))
 
 """ load the patient data and return a vector of Arrays, each of shape 4x31 denoting the respective concentration or NaN if not available """
 function pfizerdata()
-  data = readtable(joinpath(datadir,"pfizer_normal.txt"), separator='\t')
+  file = joinpath(dirname(@__FILE__), "pfizer_normal.txt")
+  data = readtable(file, separator='\t')
   results = Vector()
   map(groupby(data, 6)) do subject
     p = fill(NaN, 4, 31)
