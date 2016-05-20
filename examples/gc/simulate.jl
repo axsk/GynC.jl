@@ -1,5 +1,5 @@
-" simulate `iters` iteration of the markov chain corresponding to the model specified by the `GynCConfig`, with initial values `inity0` and `initparms` (defaulting to the reference solution). The initial proposal density at point x is a Log-normal distribution with median x standard deviation x*`relprop` " 
-function mcmc(c::GynCConfig, iters)
+" simulate `iters` iteration of the markov chain corresponding to the model specified by the `Config`, with initial values `inity0` and `initparms` (defaulting to the reference solution). The initial proposal density at point x is a Log-normal distribution with median x standard deviation x*`relprop` " 
+function mcmc(c::Config, iters)
   m = model(c)
 
   initparms, inity0 = sampletoparms(c.init)
