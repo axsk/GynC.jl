@@ -127,7 +127,7 @@ euler_A(w, L, h) = projectsimplex!(w + dA(w, L) * h)
 
 # since this results merely in a maximum likelihood estimate, which in application often is irregular/unregular? 
 # one may try to regularize this with an entropy based prior
-# P(π) = H(π) = ∫ π(x) * log(π(x)) dx
+# P(π) = h(π) = - ∫ π(x) * log(π(x)) dx
 
 function entropy(weights, density)
   h = 0.
@@ -140,9 +140,9 @@ function entropy(weights, density)
 end
 
 # and then optimize the resulting 
-# posterior P(π|z) ~=  P(z|π) * H(π)
+# posterior P(π|z) ~=  P(z|π) * h(π)
 
-## unser objective hier is jetzt eher log(A(π) * e^H(π)), warum?
+## unser objective hier is jetzt eher log(A(π) * e^h(π)), warum?
 phih(w, pi1, L) = log(A(w, L)) + entropy(w, pi1)
 
 # with
