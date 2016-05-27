@@ -1,8 +1,8 @@
 # construct the WeightedChain corresponding to the concatenated samples and respective data
 function WeightedChain(samplings::Sampling...; sigma::Real=.1)
   samples = vcat([s.samples for s in samplings]...)
-  prior   = vcat(([exp(s.logprior) for s in samplings]...))
-  lhs     = likelihoods(samples, Matrix[s.model[:data].value for s in samplings], sigma)
+  prior   = vcat([exp(s.logprior) for s in samplings]...)
+  lhs     = likelihoods(samples, Matrix[s.config.data for s in samplings], sigma)
   WeightedChain(samples, lhs, prior)
 end
 
