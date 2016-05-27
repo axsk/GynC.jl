@@ -1,3 +1,5 @@
+__precompile__()
+
 module GynC
 
 import ForwardDiff # to compute derivative of objective
