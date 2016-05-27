@@ -1,5 +1,5 @@
-using Distributions
-import Distributions: logpdf, minimum, maximum, length, insupport, _logpdf, size
+import Distributions: logpdf, minimum, maximum, length, insupport, _logpdf, size, ContinuousUnivariateDistribution, ContinuousMultivariateDistribution, MultivariateMixture, UnivariateDistribution, Truncated, MvNormal, MixtureModel
+
 
 
 type UnivariateDensityDistribution <: ContinuousUnivariateDistribution
@@ -22,7 +22,7 @@ function gaussianmixture(y::Matrix, stdfactor=1)
 end
 
 # HOTFIX for missing insupport method for MixtureModel
-insupport(d::Distributions.MultivariateMixture, x::AbstractVector) = true
+insupport(d::MultivariateMixture, x::AbstractVector) = true
 
 """ Constructs a Distribution based on the given density function """
 DensityDistribution(pdf::Function; kwargs...) = DensityDistribution(1, pdf; kwargs...)

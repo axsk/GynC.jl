@@ -1,4 +1,5 @@
-using Mamba, Distributions
+using Mamba
+using Distributions: pdf
 using JLD, HDF5
 using DataFrames
 using Requires
