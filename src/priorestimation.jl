@@ -20,11 +20,15 @@ end
 
 density(c::WeightedChain) = c.upd .* c.weights
 
+### fix upd scaling
+getindex(c::WeightedChain, i) = WeightedChain(samples[i, :], likelihoods[i, :], weights[i, :] / sum(weights[i, :]), upd[i, :])
+
+
 ### wrappers ###
 
 emiteration!(c::WeightedChain) = (emiteration!(c.weights, c.likelihoods); c)
 euler_A!(c::WeightedChain, h::Real) = (c.weights = euler_A(c.weights, c.likelihoods, h); c)
-euler_phih!(c::WeightedChain, h) = (c.weights = euler_phih(c.weights, c.density, c.likelihoods, h); c)
+euler_phih!(c::WeightedChain, h) = (c.weights = euler_phih(c.weights, density(c), c.likelihoods, h); c)
 
 
 ##### Algorithms #####
@@ -87,9 +91,8 @@ euler_A(w, L, h) = projectsimplex!(w + dA(w, L) * h)
 function entropy(weights, density)
   h = 0.
   for i in eachindex(weights)
-    p = weights[i] * density[i]
-    p == 0 && continue
-    h += weights[i] * log(p)
+    density[i] == 0 && continue
+    h += weights[i] * log(density[i])
   end
   -h
 end
