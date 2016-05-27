@@ -5,17 +5,20 @@ type WeightedChain
   samples::Matrix     # sample coordinates in each row
   likelihoods::Matrix # likelihoods for the different datas in each column 
   weights::Vector     # the corresponding weights 
-  density::Vector     # the density of the initial sampling, for e.g. entropy calculation
+  upd::Vector         # unweighted density, used to calculate the density for e.g. entropy calculation
 end
 
-# construct the WeightedChaind corresponding to the given likelihoods and priors
+# construct the WeightedChain corresponding to posterior `samples` with the given likelihoods and priors
 function WeightedChain(samples::Matrix, lhs::Matrix, prior::Vector)
   weights = ones(size(samples, 1)) / size(samples, 1)
   lhs     = lhs ./ sum(lhs, 1) # normalize for stability
   density = mean(lhs, 2) .* prior |> vec
   density = density / sum(density) # normalize for entropy
+  denisty = density ./ weights # reverse weighting, to allow for density computation based on weights
   WeightedChain(samples, lhs, weights, density)
 end
+
+density(c::WeightedChain) = c.upd .* c.weights
 
 ### wrappers ###
 
