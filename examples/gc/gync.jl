@@ -48,6 +48,7 @@ type Sampling
   loglikelihood::Vector
   logpost::Vector
   config::Config
+  model
 end
 
 
