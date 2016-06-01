@@ -8,7 +8,7 @@ function lausannedata(caseid::Int)
   p = fill(NaN, 4, 31)
 
   for h in 1:4 
-    data = readtable(joinpath(dir,hormonefile[h]), separator=',')
+    data = DataFrames.readtable(joinpath(dir,hormonefile[h]), separator=',')
     try
       y = findfirst(data[:Cas].=="$caseid")
       for day in 1:32
