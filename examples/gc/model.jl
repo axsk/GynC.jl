@@ -87,6 +87,7 @@ unlist(x::Vector) = exp(x)
 # TODO: fix transformation in mcmc
 
 init(c::Config) = (vcat(c.initparms, c.inity0))
+dim(c::Config)  = length(c.variate[:])
 
 function SamplerVariate(c::Config)
   linit          = list(init(c))

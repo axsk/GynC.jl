@@ -1,16 +1,22 @@
 # construct the WeightedChain corresponding to the concatenated samples and respective data
 function WeightedChain(samplings::Sampling...; sigma::Real=.1)
+
   samples = vcat([s.samples for s in samplings]...)
-  prior   = vcat([exp(s.logprior) for s in samplings]...)
-  lhs     = likelihoods([s.config for s in samplings], samples)
+
+  prior   = Float64[
+              logprior(samplings[1].config, samples[i,:] |> vec)
+              for i in 1:size(samples,1)]
+
+  lhs     = Float64[
+              llh(s.config, samples[i,:] |> vec)
+              for i in 1:size(samples,1), s in samplings]
+
+  prior = (prior - maximum(prior))  |> exp
+  lhs   = (lhs  .- maximum(lhs, 1)) |> exp
+  
   WeightedChain(samples, lhs, prior)
 end
 
-function likelihoods(configs, samples)
-  [llh(config, sample)
-    for sample in [samples[k,:] |> vec for k in 1:size(samples,1)],
-        config in configs]
-end
 
 ### Cache for likelihood evaluation ###
 

@@ -4,6 +4,7 @@ export sample, sample!, batch
 export load, save
 export samples
 
+
 include("progress.jl")
 
 import DataFrames
@@ -17,6 +18,8 @@ include("model.jl")
 
 import Mamba
 include("sampling.jl")
+
+export plotsolutions, plotdata
 
 
 
