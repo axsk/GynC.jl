@@ -91,7 +91,8 @@ function SamplerVariate(c::Config)
   linit          = list(init(c))
   #cachedlogpost = cache(x -> post(c,unlist(x)), 3)
   
-  logf = x -> post(c, unlist(x))
+  # note the log(x) adjustment to balance out the jump density transformation
+  logf = x -> post(c, unlist(x)) + sum(log(x))
   sigma         = eye(length(linit)) * log(1+(c.relprop^2))
 
   Mamba.SamplerVariate(linit, Mamba.AMMTune(linit, sigma, cache(logf, 3);
@@ -126,8 +127,6 @@ function llh(c::Config, x::Vector)
   sre = l2(data(c), y)
   -1/(2*c.sigma_rho^2) * sre
 end
-
-
 
 " sundials cvode solution to the gyncycle model "
 gync(c::Config, x::Vector, tspan) = gync(y0(x), allparms(parms(x)), tspan)
