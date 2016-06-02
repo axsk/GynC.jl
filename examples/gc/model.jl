@@ -33,7 +33,7 @@ type Config
   priory0
 end
 
-data(c::Config) = data(c.subject)
+data(c::Config) = data(c.patient)
 
 
 function Config(patient=Lausanne(1); sigma_rho=0.1, relprop=0.1, thin=1, initparms=refparms, inity0=refy0, p_parms=priorparms(5 * initparms), p_y0=priory0(1) ) 
@@ -62,16 +62,17 @@ priorparms(αs)       = Distributions.UnivariateDistribution[
 function referencesolution(resolution=1)
   sol = gync(refy0, allparms(refparms), collect(0:resolution:30.))
   # since we get a (small) negative value for OvF, impeding the log transformation for the prior, set this to the next minimal value
-  for i in 1:size(sol,1)
-    sol[i, sol[i,:] .<= 0] = minimum(sol[i, sol[i,:] .> 0])
+  for j in 1:size(sol, 2)
+    toosmall = sol[:,j] .<= 0
+    sol[toosmall, j] = minimum(sol[!toosmall, j])
   end
   sol
 end
 
 function gaussianmixture(y::Matrix, stdfactor=1)
-   stds = mapslices(std, y, 2) * stdfactor |> vec
+   stds = mapslices(std, y, 1) * stdfactor |> vec
    vars = abs2(stds)
-   normals = mapslices(yt->Distributions.MvNormal(yt, vars), y, 1) |> vec
+   normals = mapslices(yt->Distributions.MvNormal(yt, vars), y, 2) |> vec
    Distributions.MixtureModel(normals)
 end
 
@@ -89,10 +90,9 @@ init(c::Config) = (vcat(c.initparms, c.inity0))
 
 function SamplerVariate(c::Config)
   linit          = list(init(c))
-  #cachedlogpost = cache(x -> post(c,unlist(x)), 3)
   
-  # note the log(x) adjustment to balance out the jump density transformation
-  logf = x -> post(c, unlist(x)) + sum(log(x))
+  # note the adjustment to balance out the jump density transformation
+  logf = cache(x -> logpost(c, unlist(x)) + sum(x), 3)
   sigma         = eye(length(linit)) * log(1+(c.relprop^2))
 
   Mamba.SamplerVariate(linit, Mamba.AMMTune(linit, sigma, cache(logf, 3);
@@ -102,7 +102,7 @@ end
 
 ### Density functions)
 
-function prior(c::Config, x::Vector)
+function logprior(c::Config, x::Vector)
   l = Distributions.logpdf(c.priory0, y0(x))
   for i in 1:82
     l += Distributions.logpdf(c.priorparms[i], x[i])
@@ -110,8 +110,8 @@ function prior(c::Config, x::Vector)
   l
 end
 
-function post(c::Config, x::Vector)
-  l = prior(c, x)
+function logpost(c::Config, x::Vector)
+  l = logprior(c, x)
   l == -Inf || (l += llh(c, x))
   #rand() < 0.05 && println("$(x[1]) $l")
   l
@@ -143,7 +143,7 @@ end
 function l2(data1, data2)
   # TODO: think about the scales
   # NOTE: dependence on amount of measured data
-  diff = (data1 - data2) ./ [120, 10, 400, 15]
+  diff = (data1 - data2) ./ [120 10 400 15]
   sumabs2(diff[!isnan(diff)])
 end
 

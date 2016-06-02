@@ -58,8 +58,8 @@ function sample!(s::Sampling, iters::Int)
     end
     u = unlist(v[:])
     x[i,:] = u
-    priors[i] = prior(s.config, u)
-    posts[i]  = post(v[:])
+    #priors[i] = prior(s.config, u)
+    #posts[i]  = post(v[:])
   end
 
   Sampling(
