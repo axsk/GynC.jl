@@ -1,7 +1,6 @@
 import Distributions: logpdf, minimum, maximum, length, insupport, _logpdf, size, ContinuousUnivariateDistribution, ContinuousMultivariateDistribution, MultivariateMixture, UnivariateDistribution, Truncated, MvNormal, MixtureModel
 
 
-
 type UnivariateDensityDistribution <: ContinuousUnivariateDistribution
   lpdf::Function
   min::Real

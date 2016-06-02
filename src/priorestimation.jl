@@ -8,11 +8,27 @@ type WeightedChain
   upd::Vector         # unweighted density, used to calculate the density for e.g. entropy calculation
 end
 
+function sample(s::WeightedChain, n)
+  norm = sum(s.weights)
+  N    = size(s.samples, 1)
+  
+  S = Array{Float64}(n, size(s.samples, 2))
+
+  for i = 1:n
+    j = rand(1:N)
+    while rand() > (s.weights[j] / norm)
+      j = rand(1:N)
+    end
+    S[i, :] = s.samples[j, :]
+  end
+  S
+end
+
 # construct the WeightedChain corresponding to posterior `samples` with the given likelihoods and priors
 function WeightedChain(samples::Matrix, lhs::Matrix, prior::Vector)
   weights = ones(size(samples, 1)) / size(samples, 1)
   lhs     = lhs ./ sum(lhs, 1) # normalize for stability
-  density = mean(lhs, 2) .* prior |> vec
+  density = Base.mean(lhs, 2) .* prior |> vec
   density = density / sum(density) # normalize for entropy
   denisty = density ./ weights # reverse weighting, to allow for density computation based on weights
   WeightedChain(samples, lhs, weights, density)
