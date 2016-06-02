@@ -34,3 +34,23 @@ end
 plot_t_llh(sim) = plot(sim.loglikelihood, title="loglikelihood")
 
 samples(s::Sampling) = s.samples
+
+measuredspeciesname(species) = speciesnames[measuredinds[species]]
+
+function plotdata(s::Sampling, species;
+  p=plot(), title=measuredspeciesname(species), kwargs...)
+
+  y = s.config.data[species, :] |> vec
+  x = find(yy -> !isnan(yy), y)
+
+  plot!(p, x-1, y[x]; title=title, kwargs...)
+end
+
+function plotsolutions(s::Sampling, species;
+  p=plot(), title=measuredspeciesname(species), kwargs...)
+
+  for sol in solutions(s)
+    plot!(p, 0:30, sol[:, measuredinds[species]]; title=title, kwargs...)
+  end
+  p
+end

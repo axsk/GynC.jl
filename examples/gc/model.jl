@@ -116,8 +116,7 @@ function post(c::Config, x::Vector)
 end
 
 function llh(c::Config, x::Vector) 
-  tspan = collect(0:30.)
-  y = gync(c, x, collect(0:30.))[measuredinds,:]
+  y = gync(c, x, 0:30)[:,measuredinds]
 
   if any(isnan(y)) > 0
     #Base.warn("encountered NaN in gync result")
@@ -127,10 +126,12 @@ function llh(c::Config, x::Vector)
   -1/(2*c.sigma_rho^2) * sre
 end
 
+
+
 " sundials cvode solution to the gyncycle model "
 gync(c::Config, x::Vector, tspan) = gync(y0(x), allparms(parms(x)), tspan)
 
-gync(y0, p, t) = Sundials.cvode((t,y,dy) -> gyncycle_rhs!(y,p,dy), y0, t)'
+gync(y0, p, t) = Sundials.cvode((t,y,dy) -> gyncycle_rhs!(y,p,dy), y0, convert(Array{Float64, 1}, t))
 
 """ componentwise squared relative difference of two matrices """
 function squaredrelativeerror(data1::Matrix, data2::Matrix)

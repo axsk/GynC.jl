@@ -7,6 +7,18 @@ type Sampling
   thin::Int
 end
 
+llh(s::Sampling) = pmap(x -> llh(s.config, x), [s.samples[k, :] |> vec for k in 1:size(s.samples, 1)])
+
+function solutions(s::Sampling, t=0:30)
+  n = size(s.samples, 1)
+  res = Array(Array, n)
+  for k = 1:n
+    res[k] = gync(s.config, s.samples[k,:] |> vec, t) 
+  end
+  res
+end
+  
+
 function Base.show(io::IO, s::Sampling)
   print(io, "Sampling
   samples: $(size(s.samples))
