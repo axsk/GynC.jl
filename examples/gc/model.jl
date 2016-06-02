@@ -14,15 +14,16 @@ const samplednames   = [parameternames; speciesnames]
 allparms(parms::Vector) = (p = copy(refallparms); p[sampledinds] = parms; p)
 
 
-type Subject
+type Patient
   data::Array{Float64}
   id::Any
 end
 
-data(s::Subject) = s.data
+data(p::Patient) = p.data
+Base.show(io::IO, p::Patient) = show(p.id)
 
 type Config
-  data::Matrix      # measurements
+  patient::Patient  # patient measurements
   sigma_rho::Real   # measurement error / std for likelihood gaussian 
   relprop::Real     # relative proposal variance
   thin::Integer     # thinning intervall
@@ -32,16 +33,16 @@ type Config
   priory0
 end
 
+data(c::Config) = data(c.subject)
 
-function Config(data; sigma_rho=0.1, relprop=0.1, thin=1, initparms=refparms, inity0=refy0, p_parms=priorparms(5 * initparms), p_y0=priory0(1) ) 
-  Config(data, sigma_rho, relprop, thin, initparms, inity0, p_parms, p_y0)
+
+function Config(patient=Lausanne(1); sigma_rho=0.1, relprop=0.1, thin=1, initparms=refparms, inity0=refy0, p_parms=priorparms(5 * initparms), p_y0=priory0(1) ) 
+  Config(patient, sigma_rho, relprop, thin, initparms, inity0, p_parms, p_y0)
 end
 
-Config() = Config(Lausanne(1))
-Config(s::Subject; args...) = Config(data(s); args...)
-
 function Base.show(io::IO, c::Config)
-  print(io, "GynC mcmc sampling config
+  print(io, "Config:
+ patient: $(c.patient)
  sigma:   $(c.sigma_rho)
  relprop: $(c.relprop)
  thin:    $(c.thin)
@@ -122,7 +123,7 @@ function llh(c::Config, x::Vector)
     #Base.warn("encountered NaN in gync result")
     return -Inf
   end
-  sre = l2(c.data, y)
+  sre = l2(data(c), y)
   -1/(2*c.sigma_rho^2) * sre
 end
 

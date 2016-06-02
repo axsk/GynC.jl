@@ -40,7 +40,7 @@ measuredspeciesname(species) = speciesnames[measuredinds[species]]
 function plotdata(s::Sampling, species;
   p=plot(), title=measuredspeciesname(species), kwargs...)
 
-  y = s.config.data[species, :] |> vec
+  y = data(s)[species, :] |> vec
   x = find(yy -> !isnan(yy), y)
 
   plot!(p, x-1, y[x]; title=title, kwargs...)

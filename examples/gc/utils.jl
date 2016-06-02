@@ -2,8 +2,14 @@
 function WeightedChain(samplings::Sampling...; sigma::Real=.1)
   samples = vcat([s.samples for s in samplings]...)
   prior   = vcat([exp(s.logprior) for s in samplings]...)
-  lhs     = likelihoods(samples, Matrix[s.config.data for s in samplings], sigma)
+  lhs     = likelihoods([s.config for s in samplings], samples)
   WeightedChain(samples, lhs, prior)
+end
+
+function likelihoods(configs, samples)
+  [llh(config, sample)
+    for sample in [samples[k,:] |> vec for k in 1:size(samples,1)],
+        config in configs]
 end
 
 ### Cache for likelihood evaluation ###
