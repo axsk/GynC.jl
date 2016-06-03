@@ -45,3 +45,26 @@ function plotsolutions(s::Sampling, species;
   plot!(p, x, data; title=title, kwargs...)
   p
 end
+
+import PyPlot
+
+function plot(s::WeightedChain, species, nbins = 20)
+  x,y = weightedhist(s.samples[:,species], s.weights, nbins)
+  PyPlot.bar(x[1:end-1], y, width=step(x))
+end
+
+function weightedhist(v::Vector, w::Vector, nbins)
+  min, max = extrema(v)
+  step = (max-min) / nbins
+
+  bins = zeros(nbins)
+
+  for i in eachindex(v)
+    bin = round(Int, (v[i] - min) / step, RoundDown) + 1
+    if bin > nbins 
+      bin = nbins
+    end
+    bins[bin] += w[i]
+  end
+  (min:step:max), bins
+end

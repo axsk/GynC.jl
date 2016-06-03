@@ -8,6 +8,7 @@ type WeightedChain
   upd::Vector         # unweighted density, used to calculate the density for e.g. entropy calculation
 end
 
+
 function sample(s::WeightedChain, n)
   norm = sum(s.weights)
   N    = size(s.samples, 1)
