@@ -4,6 +4,10 @@ type Sampling
   variate::Mamba.AMMVariate
 end
 
+import Base.getindex
+
+getindex(s::Sampling, i, j) = Sampling(s.samples[i,j], s.config, s.variate)
+
 llh(s::Sampling) = pmap(x -> llh(s.config, x), [s.samples[k, :] |> vec for k in 1:size(s.samples, 1)])
 
 function solutions(s::Sampling, t=0:30)

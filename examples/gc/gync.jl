@@ -5,8 +5,6 @@ export load, save
 export samples
 
 
-include("progress.jl")
-
 import DataFrames
 include("data/lausanne.jl")
 include("data/pfizer.jl")

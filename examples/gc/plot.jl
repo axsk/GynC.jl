@@ -29,17 +29,19 @@ measuredspeciesname(species) = speciesnames[measuredinds[species]]
 function plotdata(s::Sampling, species;
   p=plot(), title=measuredspeciesname(species), kwargs...)
 
-  y = data(s)[species, :] |> vec
+  y = data(s)[:, species] |> vec
   x = find(yy -> !isnan(yy), y)
 
   plot!(p, x-1, y[x]; title=title, kwargs...)
 end
 
 function plotsolutions(s::Sampling, species;
-  p=plot(), title=measuredspeciesname(species), kwargs...)
+  p=plot(), 
+  x=0:1/3:30, 
+  title=measuredspeciesname(species),
+  kwargs...)
 
-  for sol in solutions(s)
-    plot!(p, 0:30, sol[:, measuredinds[species]]; title=title, kwargs...)
-  end
+  data = hcat(Vector{Float64}[s[:, measuredinds[species]] for s in solutions(s, x)]...)
+  plot!(p, x, data; title=title, kwargs...)
   p
 end
