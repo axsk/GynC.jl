@@ -46,11 +46,12 @@ function plotsolutions(s::Sampling, species;
   p
 end
 
-import PyPlot
+@require PyPlot begin
 
-function plot(s::WeightedChain, species, nbins = 20)
-  x,y = weightedhist(s.samples[:,species], s.weights, nbins)
-  PyPlot.bar(x[1:end-1], y, width=step(x))
+  function plot(s::WeightedChain, species, nbins = 20)
+    x,y = weightedhist(s.samples[:,species], s.weights, nbins)
+    PyPlot.bar(x[1:end-1], y, width=step(x))
+  end
 end
 
 function weightedhist(v::Vector, w::Vector, nbins)

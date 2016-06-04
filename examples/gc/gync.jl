@@ -26,4 +26,5 @@ include("utils.jl")
 
 include("batch.jl")
 
+using Requires
 include("plot.jl")
