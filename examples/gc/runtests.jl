@@ -17,7 +17,7 @@ rm(tmp)
 
 info("testing sampling plots")
 Plots.unicodeplots()
-plotsolutions(s, 1)
+plotsolutions(s, 1) |> print
 plotdata(s, 1)
 
 
@@ -29,6 +29,7 @@ info("testing batch")
 dir = mktempdir()
 cs = [Config(Lausanne(i)) for i in 1:3]
 ss = batch(cs, 10, dir=dir)
+@assert typeof(ss[3]) == GynC.Sampling
 rm(dir, recursive=true)
 
 

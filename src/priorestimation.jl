@@ -37,6 +37,8 @@ end
 
 density(c::WeightedChain) = c.upd .* c.weights
 
+import Base.getindex
+
 ### fix upd scaling
 getindex(c::WeightedChain, i) = WeightedChain(samples[i, :], likelihoods[i, :], weights[i, :] / sum(weights[i, :]), upd[i, :])
 
