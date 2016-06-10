@@ -1,5 +1,5 @@
 type Sampling
-  samples::Array
+  samples::Matrix{Float64}
   config::Config
   variate::Mamba.AMMVariate
 end

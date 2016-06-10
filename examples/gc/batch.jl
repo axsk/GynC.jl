@@ -1,7 +1,7 @@
 using ClusterManagers
 
-function batch(cs::Vector{Config} = Config[Config(Lausanne(i), relprop = 0.001, sigma_rho = 0.1, thin = 10) for i in 1:45], 
-  maxiters=10_000_000;
+function batch(cs::Vector{Config} = Config[Config(Lausanne(i), relprop = 0.0001, sigma_rho = 0.1, thin = 20) for i in 1:45];
+  maxiters=10_000_000,
   dir="/nfs/datanumerik/bzfsikor/batch",
   maxprocs::Int = 64)
   
@@ -11,6 +11,7 @@ function batch(cs::Vector{Config} = Config[Config(Lausanne(i), relprop = 0.001, 
     eval(Main, :(@everywhere using GynC))
     @everywhere blas_set_num_threads(1)
 
+    isdir(dir) || mkdir(dir)
     paths = [joinpath(dir,filename(c)) for c in cs]
 
     res = pmap((c,p) -> GynC.batch(c, maxiters, p), cs, paths)
@@ -26,9 +27,10 @@ filename(c::Config) = "p$(c.patient.id)s$(c.sigma_rho)r$(c.relprop)t$(c.thin).jl
 " If the file speciefied in `path` exists, continue mcmc simulation of that file, otherwise start a new one with the given `config`.
 Saves the result every `batchiters` to the file until `maxiters` is reached."
 
-function batch(c::Config, maxiters, path; batchiters = div(maxiters, 20), overwrite=false)
+function batch(c::Config, maxiters, path; batchiters = div(maxiters, 10), overwrite=false)
 
   local s
+  @assert c.thin <= batchiters
 
   if !isfile(path) || overwrite
     info("writing to $path")

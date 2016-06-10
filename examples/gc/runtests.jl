@@ -8,7 +8,7 @@ display(plot(s))=#
 
 info("testing batch sampling")
 tmp = tempname() * ".jld"
-s = batch(Config(Lausanne(1), thin=2), 20, tmp)
+s = batch(Config(Lausanne(1), thin=2), 20, tmp, batchiters=10)
 s = load(tmp)
 s = sample!(s, 20)
 @assert size(s.samples) == (20, 115)
@@ -31,5 +31,3 @@ cs = [Config(Lausanne(i)) for i in 1:3]
 ss = batch(cs, 10, dir=dir)
 @assert typeof(ss[3]) == GynC.Sampling
 rm(dir, recursive=true)
-
-

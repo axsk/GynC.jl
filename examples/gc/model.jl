@@ -24,11 +24,11 @@ Base.show(io::IO, p::Patient) = show(p.id)
 
 type Config
   patient::Patient  # patient measurements
-  sigma_rho::Real   # measurement error / std for likelihood gaussian 
-  relprop::Real     # relative proposal variance
-  thin::Integer     # thinning intervall
-  initparms::Vector      # initial sample
-  inity0::Vector
+  sigma_rho::Float64   # measurement error / std for likelihood gaussian 
+  relprop::Float64     # relative proposal variance
+  thin::Int     # thinning intervall
+  initparms::Vector{Float64}      # initial sample
+  inity0::Vector{Float64}
   priorparms
   priory0
 end

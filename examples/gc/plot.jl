@@ -1,4 +1,4 @@
-using Plots
+using Plots: plot, plot!
 import Plots: plot
 
 import GynC: Sampling
