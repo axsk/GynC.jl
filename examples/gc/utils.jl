@@ -49,8 +49,14 @@ function WeightedChain(samplings::Vector{Sampling})
   
   samples = vcat(samplevec...)
 
+  
+  lhs   = lhs ./ sum(lhs, 1)
+  weights = counts / sum(counts)
+  density = Base.mean(lhs, 2) .* prior |> vec
+  density = density / sum(density)
+
   # create weighted chain
-  WeightedChain(samples, lhs, prior, counts)
+  WeightedChain(samples, lhs, weights, density)
 end
 
 

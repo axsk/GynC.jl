@@ -45,13 +45,21 @@ function plotsolutions(s::Sampling, species;
   plot!(p, x, data; title=title, kwargs...)
   p
 end
-
+#=
 @require PyPlot begin
 
   function plot(s::WeightedChain, species, nbins = 20)
     x,y = weightedhist(s.samples[:,species], s.weights, nbins)
     PyPlot.bar(x[1:end-1], y, width=step(x))
   end
+end
+=#
+
+using KernelDensity: kde
+
+function plot(s::WeightedChain, species, npoints)
+  k = kde(s.samples[:,species], npoints = npoints, weights = s.weights)
+  plot(k.x,k.density)
 end
 
 function weightedhist(v::Vector, w::Vector, nbins)
