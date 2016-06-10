@@ -26,8 +26,11 @@ function sample(s::WeightedChain, n)
 end
 
 # construct the WeightedChain corresponding to posterior `samples` with the given likelihoods and priors
-function WeightedChain(samples::Matrix, lhs::Matrix, prior::Vector)
-  weights = ones(size(samples, 1)) / size(samples, 1)
+function WeightedChain(samples::Matrix, lhs::Matrix, prior::Vector,
+    weights = ones(size(samples, 1)))
+
+  # normalization 
+  weights = weights / sum(weights)
   lhs     = lhs ./ sum(lhs, 1) # normalize for stability
   density = Base.mean(lhs, 2) .* prior |> vec
   density = density / sum(density) # normalize for entropy

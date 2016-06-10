@@ -22,12 +22,15 @@ plotdata(s, 1)
 
 
 info("testing weightedchain")
-w=WeightedChain(s, s)
+w=WeightedChain([s, s])
 sample(w, 10)
 
-info("testing batch")
-dir = mktempdir()
-cs = [Config(Lausanne(i)) for i in 1:3]
-ss = batch(cs, 10, dir=dir)
-@assert typeof(ss[3]) == GynC.Sampling
-rm(dir, recursive=true)
+testslurm = false
+if testslurm
+  info("testing batch")
+  dir = mktempdir()
+  cs = [Config(Lausanne(i)) for i in 1:3]
+  ss = batch(cs, maxiters=10, dir=dir)
+  @assert typeof(ss[3]) == GynC.Sampling
+  rm(dir, recursive=true)
+end

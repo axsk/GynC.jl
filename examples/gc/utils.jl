@@ -1,20 +1,56 @@
+using Iterators: product
+
 # construct the WeightedChain corresponding to the concatenated samples and respective data
-function WeightedChain(samplings::Sampling...; sigma::Real=.1)
+function WeightedChain(samplings::Vector{Sampling})
 
-  samples = vcat([s.samples for s in samplings]...)
 
-  prior   = Float64[
-              logprior(samplings[1].config, samples[i,:] |> vec)
-              for i in 1:size(samples,1)]
+  # remove repeating samples
+  curr = zeros(samplings[1].samples[1,:])
+  samplevec = Matrix{Float64}[]
+  counts  = Int[]
 
-  lhs     = Float64[
-              llh(s.config, samples[i,:] |> vec)
-              for i in 1:size(samples,1), s in samplings]
+  for s in samplings
+    for i in 1:size(s.samples, 1)
+      if s.samples[i,:] == curr
+        counts[end] += 1
+      else
+        curr = s.samples[i,:]
+        push!(samplevec, curr)
+        push!(counts, 1)
+      end
+    end
+  end
 
+
+  # compute prior and likelihoods
+
+  prior   = map(samplevec) do s
+              logprior(samplings[1].config, s |> vec)
+            end
+
+
+  lhs     = pmap(product(Vector[samplevec], [s.config for s in samplings])) do t
+              map(s->llh(t[2], s |> vec), t[1])
+            end 
+
+  lhs     = hcat(lhs...)
+
+  #prior   = Float64[
+  #           logprior(samplings[1].config, samples[i,:] |> vec)
+  #           for i in 1:size(samples,1)]
+
+  #lhs     = Float64[
+  #            llh(s.config, samples[i,:] |> vec)
+  #            for i in 1:size(samples,1), s in samplings]
+
+  # normalize for stability
   prior = (prior - maximum(prior))  |> exp
   lhs   = (lhs  .- maximum(lhs, 1)) |> exp
   
-  WeightedChain(samples, lhs, prior)
+  samples = vcat(samplevec...)
+
+  # create weighted chain
+  WeightedChain(samples, lhs, prior, counts)
 end
 
 
