@@ -72,7 +72,7 @@ end
 function gaussianmixture(y::Matrix, stdfactor=1)
    stds = mapslices(std, y, 1) * stdfactor |> vec
    vars = abs2(stds)
-   normals = mapslices(yt->Distributions.MvNormal(yt, vars), y, 2) |> vec
+   normals = mapslices(yt->Distributions.MvNormal(yt, stds), y, 2) |> vec
    Distributions.MixtureModel(normals)
 end
 
