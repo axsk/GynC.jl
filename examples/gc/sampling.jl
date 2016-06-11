@@ -23,7 +23,7 @@ function Base.show(io::IO, s::Sampling)
   print(io, "Sampling
   samples: $(size(s.samples))
   uniques: $(length(unique(s.samples[:,1])))
-  config:  $(s.config)")
+  config:  ", (s.config))
 end
 
 mean(s::Sampling) = s.variate.tune.Mv

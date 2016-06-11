@@ -20,7 +20,7 @@ type Patient
 end
 
 data(p::Patient) = p.data
-Base.show(io::IO, p::Patient) = show(p.id)
+Base.show(io::IO, p::Patient) = print(io,p.id)
 
 type Config
   patient::Patient  # patient measurements
@@ -42,12 +42,12 @@ end
 
 function Base.show(io::IO, c::Config)
   print(io, "Config:
- patient: $(c.patient)
+ patient: ", c.patient, "
  sigma:   $(c.sigma_rho)
  relprop: $(c.relprop)
  thin:    $(c.thin)
  init:    $(hash((c.initparms, c.inity0)))
- prior:   $(hash((priorparms, priory0)))")
+ prior:   $(typeof((c.priorparms, c.priory0)))")
 end
 
 
