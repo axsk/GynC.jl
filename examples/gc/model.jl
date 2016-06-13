@@ -119,10 +119,15 @@ function logpost(c::Config, x::Vector)
 end
 
 function llh(c::Config, x::Vector) 
-  y = gync(c, x, 0:30)[:,measuredinds]
+  local y
+  try
+    y = gync(c, x, 0:30)[:,measuredinds]
+  catch
+    return -Inf
+  end
 
   if any(isnan(y)) > 0
-    #Base.warn("encountered NaN in gync result")
+    Base.warn("encountered NaN in gync result")
     return -Inf
   end
   sre = l2(data(c), y)
