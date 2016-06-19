@@ -6,6 +6,7 @@ const refy0       = include("data/refy0.jl")
 const refallparms = include("data/refparms.jl")
 const refparms    = refallparms[sampledinds]
 
+const defaultpropvar = include("data/proposals/allcovs.jl") * 2.38^2 / 115
 
 const speciesnames   = include("data/speciesnames.jl")
 const parameternames = include("data/parameternames.jl")[sampledinds]
@@ -25,7 +26,7 @@ Base.show(io::IO, p::Patient) = print(io,p.id)
 type Config
   patient::Patient  # patient measurements
   sigma_rho::Float64   # measurement error / std for likelihood gaussian 
-  relprop::Float64     # relative proposal variance
+  propvar::Matrix{Float64}     # proposal variance
   thin::Int     # thinning intervall
   initparms::Vector{Float64}      # initial sample
   inity0::Vector{Float64}
@@ -34,17 +35,20 @@ type Config
 end
 
 data(c::Config) = data(c.patient)
+filename(c::Config) = "p$(c.patient.id)s$(c.sigma_rho)r$(round((c.propvar|>trace) / (defaultpropvar|>trace),3))t$(c.thin).jld"
 
+# shouldnt the squares be taken after the log?
+uniformpropvar(relprop) = eye(length(linit)) * log(1+(c.relprop^2))
 
-function Config(patient=Lausanne(1); sigma_rho=0.1, relprop=0.1, thin=1, initparms=refparms, inity0=refy0, p_parms=priorparms(5 * initparms), p_y0=priory0(1) ) 
-  Config(patient, sigma_rho, relprop, thin, initparms, inity0, p_parms, p_y0)
+function Config(patient=Lausanne(1); sigma_rho=0.1, propvar=defaultpropvar, thin=1, initparms=refparms, inity0=refy0, p_parms=priorparms(5 * initparms), p_y0=priory0(1) ) 
+  Config(patient, sigma_rho, propvar, thin, initparms, inity0, p_parms, p_y0)
 end
 
 function Base.show(io::IO, c::Config)
   print(io, "Config:
  patient: ", c.patient, "
  sigma:   $(c.sigma_rho)
- relprop: $(c.relprop)
+ proposal variance: $((c.propvar |> trace) / (defaultpropvar |> trace)) x default trace, $(c.propvar[1,1]) top left
  thin:    $(c.thin)
  init:    $(hash((c.initparms, c.inity0)))
  prior:   $(typeof((c.priorparms, c.priory0)))")
@@ -94,9 +98,8 @@ function SamplerVariate(c::Config)
   
   # note the adjustment to balance out the jump density transformation
   logf = cache(x -> logpost(c, unlist(x)) + sum(x), 3)
-  sigma         = eye(length(linit)) * log(1+(c.relprop^2))
 
-  Mamba.SamplerVariate(linit, Mamba.AMMTune(linit, sigma, cache(logf, 3);
+  Mamba.SamplerVariate(linit, Mamba.AMMTune(linit, c.propvar, logf;
     beta = 0.05,
     scale = 2.38))
 end

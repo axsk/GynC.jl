@@ -1,4 +1,4 @@
-Lausanne(id::Int) = Patient(lausannedata(id), "L$id")
+Lausanne(id::Int) = Patient(lausannedata(id), "l$id")
 
 function lausannedata(caseid::Int)
   dir = joinpath(dirname(@__FILE__), "lausaunne")

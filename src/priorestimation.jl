@@ -7,7 +7,7 @@ type WeightedChain
   weights::Vector     # the corresponding weights 
   upd::Vector         # unweighted density, used to calculate the density for e.g. entropy calculation
 
-  function WeightedChain(s, l, w, d)
+  function WeightedChain(s, l, w=ones(size(s, 1)), d=ones(size(s, 1)))
     #w = w / sum(w)
     #l = l ./ sum(l, 1)
     u = d ./ w # TODO: think ab out this

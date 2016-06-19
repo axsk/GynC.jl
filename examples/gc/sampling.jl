@@ -58,3 +58,38 @@ function sample!(s::Sampling, iters::Int)
   s.samples = S
   s
 end
+
+#=
+
+type Samples{T} <: AbstractArray{T, 2}
+  samples :: Matrix{T}
+  cumcounts  :: Vector{Int}
+end
+
+Samples{T}(n::Int, m::Int) = Samples{T}(zeros(T,n,m), zeros(Int,n))
+
+Base.size(s::Samples) = size(s.samples)
+Base.linearindexing(::Type{Samples}) = Base.LinearSlow()
+
+index(i, cumcounts) = findfirst(c->c>=i, cumcounts)
+
+function Base.getindex(s::Samples, i, j)
+  s.samples[index(i, s.cumcounts),j]
+end
+
+function Base.setindex!(s::Samples, v, i, ::Colon)
+  ii = index(i, s.cumcounts)
+  if ii > 1 && s.samples[ii-1,:] == v
+    info("saved space :)")
+    s.cumcounts[ii-1] += 1
+  else
+    if s.cumcounts[ii] == 0
+      s.cumcounts[ii] = 1
+      s.samples[ii,:] = v
+    else
+      error("trying to overwrite value")
+    end
+  end
+end
+
+=#

@@ -1,7 +1,7 @@
 # id: 1-13
 # pfizer normal data
 
-Pfizer(id::Int) = Patient(pfizerdata()[id], "P$id")
+Pfizer(id::Int) = Patient(pfizerdata()[id], "p$id")
 
 """ load the patient data and return a vector of Arrays, each of shape 4x31 denoting the respective concentration or NaN if not available """
 function pfizerdata()

@@ -103,8 +103,4 @@ deserialize(s::Serializer) = Base.deserialize(IOBuffer(s.serialized))
 ### load / save samplings ###
 
 load(path) = JLD.load(path, "sampling")
-
-function save(path, s::Sampling)
-  @assert path[end-3:end] == ".jld"
-  JLD.save(path, "sampling", s)
-end
+save(path, s::Sampling) = JLD.save(path, "sampling", s)
