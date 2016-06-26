@@ -16,7 +16,7 @@ allparms(parms::Vector) = (p = copy(refallparms); p[sampledinds] = parms; p)
 
 
 type Patient
-  data::Array{Float64}
+  data::Array{Float64,2}
   id::Any
 end
 
@@ -27,6 +27,7 @@ type Config
   patient::Patient  # patient measurements
   sigma_rho::Float64   # measurement error / std for likelihood gaussian 
   propvar::Matrix{Float64}     # proposal variance
+  adapt::Bool
   thin::Int     # thinning intervall
   initparms::Vector{Float64}      # initial sample
   inity0::Vector{Float64}
@@ -35,13 +36,13 @@ type Config
 end
 
 data(c::Config) = data(c.patient)
-filename(c::Config) = "p$(c.patient.id)s$(c.sigma_rho)r$(round((c.propvar|>trace) / (defaultpropvar|>trace),3))t$(c.thin).jld"
+filename(c::Config) = "p$(c.patient.id)s$(c.sigma_rho)r$(round((c.propvar|>trace) / (defaultpropvar|>trace),3))t$(c.thin)a$(c.adapt).jld"
 
 # shouldnt the squares be taken after the log?
 uniformpropvar(relprop) = eye(length(linit)) * log(1+(c.relprop^2))
 
-function Config(patient=Lausanne(1); sigma_rho=0.1, propvar=defaultpropvar, thin=1, initparms=refparms, inity0=refy0, p_parms=priorparms(5 * initparms), p_y0=priory0(1) ) 
-  Config(patient, sigma_rho, propvar, thin, initparms, inity0, p_parms, p_y0)
+function Config(patient=Lausanne(1); sigma_rho=0.1, propvar=defaultpropvar, adapt=false, thin=1, initparms=refparms, inity0=refy0, p_parms=priorparms(5 * initparms), p_y0=priory0(1) ) 
+  Config(patient, sigma_rho, propvar, adapt, thin, initparms, inity0, p_parms, p_y0)
 end
 
 function Base.show(io::IO, c::Config)
@@ -49,6 +50,7 @@ function Base.show(io::IO, c::Config)
  patient: ", c.patient, "
  sigma:   $(c.sigma_rho)
  proposal variance: $((c.propvar |> trace) / (defaultpropvar |> trace)) x default trace, $(c.propvar[1,1]) top left
+ adapt:   $(c.adapt)
  thin:    $(c.thin)
  init:    $(hash((c.initparms, c.inity0)))
  prior:   $(typeof((c.priorparms, c.priory0)))")
@@ -139,6 +141,8 @@ end
 
 " sundials cvode solution to the gyncycle model "
 gync(c::Config, x::Vector, tspan) = gync(y0(x), allparms(parms(x)), tspan)
+
+gync(x::Vector, tspan=0:30) = gync(y0(x), allparms(parms(x)), tspan)
 
 gync(y0, p, t) = Sundials.cvode((t,y,dy) -> gyncycle_rhs!(y,p,dy), y0, convert(Array{Float64, 1}, t))
 

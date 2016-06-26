@@ -1,7 +1,7 @@
 using Iterators: product
 
 # construct the WeightedChain corresponding to the concatenated samples and respective data
-function WeightedChain(samplings::Vector{Sampling})
+function WeightedChain(samplings::Vector{Sampling}, burnin=0)
 
 
   # remove repeating samples
@@ -10,7 +10,7 @@ function WeightedChain(samplings::Vector{Sampling})
   counts  = Int[]
 
   for s in samplings
-    for i in 1:size(s.samples, 1)
+    for i in (1+burnin):size(s.samples, 1)
       if s.samples[i,:] == curr
         counts[end] += 1
       else

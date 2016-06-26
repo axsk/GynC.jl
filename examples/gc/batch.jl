@@ -3,7 +3,8 @@ using ClusterManagers
 function batch(cs::Vector{Config}, maxiters;
   dir="/nfs/datanumerik/bzfsikor/batch",
   paths = [joinpath(dir, filename(c)) for c in cs],
-  maxprocs::Int = 64)
+  maxprocs::Int = 64,
+  args...)
   
   nprocs = min(length(cs), maxprocs)
   procs = addprocs(SlurmManager(nprocs), partition="lowPrio")
@@ -13,13 +14,11 @@ function batch(cs::Vector{Config}, maxiters;
 
     isdir(dir) || mkdir(dir)
 
-    res = pmap((c,p) -> GynC.batch(c, maxiters, p), cs, paths)
+    res = pmap((c,p) -> GynC.batch(c, maxiters, p; args...), cs, paths)
   finally
     rmprocs(procs)
   end
 end
-
-
 
 
 " If the file speciefied in `path` exists, continue mcmc simulation of that file, otherwise start a new one with the given `config`.

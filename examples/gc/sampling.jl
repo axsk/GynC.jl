@@ -8,7 +8,7 @@ import Base.getindex
 
 getindex(s::Sampling, i, j) = Sampling(s.samples[i,j], s.config, s.variate)
 
-llh(s::Sampling) = pmap(x -> llh(s.config, x), [s.samples[k, :] |> vec for k in 1:size(s.samples, 1)])
+llh(s::Sampling) = pmap(x -> llh(s.config, x), [s.samples[k, :] |> vec for k in 1:size(s.aamples, 1)])
 
 function solutions(s::Sampling, t=0:30)
   n = size(s.samples, 1)
@@ -50,7 +50,7 @@ function sample!(s::Sampling, iters::Int)
 
   for i in 1:n
     for j in 1:thin
-      Mamba.sample!(s.variate)
+      Mamba.sample!(s.variate, adapt=s.config.adapt)
     end
     S[o+i,:] = unlist(s.variate[:])
   end

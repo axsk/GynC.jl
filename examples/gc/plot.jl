@@ -1,4 +1,4 @@
-using Plots: plot, plot!
+using Plots: plot, plot!, scatter!
 import Plots: plot
 
 import GynC: Sampling
@@ -32,7 +32,7 @@ function plotdata(s::Sampling, species;
   y = data(s)[:, species] |> vec
   x = find(yy -> !isnan(yy), y)
 
-  plot!(p, x-1, y[x]; title=title, kwargs...)
+  scatter!(p, x-1, y[x]; title=title, kwargs...)
 end
 
 function plotsolutions(s::Sampling, species;
@@ -55,7 +55,9 @@ end
 end
 =#
 
-using KernelDensity: kde
+import KernelDensity: kde
+
+kde(s::WeightedChain, species, npoints) = kde(s.samples[:,species], npoints = npoints, weights = s.weights)
 
 function plot(s::WeightedChain, species, npoints)
   k = kde(s.samples[:,species], npoints = npoints, weights = s.weights)

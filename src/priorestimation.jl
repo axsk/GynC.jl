@@ -15,8 +15,18 @@ type WeightedChain
   end
 end
 
+function sample(s::WeightedChain, n=1)
+  cumdens = cumsum(s.weights)
+  total   = cumdens[end]
 
-function sample(s::WeightedChain, n)
+  i = map(rand(n) * total) do target
+    findfirst(x->x>=target, cumdens)
+  end
+  s.samples[i,:]
+end
+
+
+#=function sample(s::WeightedChain, n=1)
   norm = sum(s.weights)
   N    = size(s.samples, 1)
   
@@ -30,14 +40,14 @@ function sample(s::WeightedChain, n)
     S[i, :] = s.samples[j, :]
   end
   S
-end
+end=#
 
 density(c::WeightedChain) = c.upd .* c.weights
 
 import Base.getindex
 
 ### fix upd scaling
-getindex(c::WeightedChain, i) = WeightedChain(samples[i, :], likelihoods[i, :], weights[i, :] / sum(weights[i, :]), upd[i, :])
+getindex(c::WeightedChain, i) = WeightedChain(c.samples[i, :], c.likelihoods[i, :], c.weights[i, :] / sum(c.weights[i, :]), c.upd[i, :])
 
 
 ### wrappers ###
