@@ -8,6 +8,8 @@ function lausannedata(caseid::Int)
 
   p = fill(NaN, 31, 4)
 
+  unitscaling = [1, 1, 1/3.671, 1]
+
   for h in 1:4 
     data = DataFrames.readtable(joinpath(dir,hormonefile[h]), separator=',')
     try
@@ -16,7 +18,7 @@ function lausannedata(caseid::Int)
         val = data[y,daynames[day]]
         day = (day-1)%31+1 # limex expects only 31 days 
         if isa(val, Number) 
-          p[day, h] = val
+          p[day, h] = val * unitscaling[h]
         end
       end
     end
