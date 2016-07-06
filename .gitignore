@@ -1,5 +1,2 @@
-python/
-fortran/
-data/
-out/
 *.jld
+*.out
