@@ -35,16 +35,36 @@ function plotdata(s::Sampling, species;
   scatter!(p, x-1, y[x]; title=title, kwargs...)
 end
 
-function plotsolutions(s::Sampling, species;
-  p=plot(), 
-  x=0:1/3:30, 
-  title=measuredspeciesname(species),
-  kwargs...)
+using Plots
 
-  data = hcat(Vector{Float64}[s[:, measuredinds[species]] for s in solutions(s, x)]...)
-  plot!(p, x, data; title=title, kwargs...)
-  p
+@userplot PlotSolutions
+@recipe function f(o::PlotSolutions)
+  samples = o.args[1]
+
+  species       --> measuredinds
+  t             --> 0:1/3:30
+  color_palette --> [colorant"steelblue"]
+  linewidth     --> 0.1
+  label         --> ""
+  seriesalpha   --> 0.1
+  layout        --> length(d[:species])
+
+  nspecies = length(d[:species])
+  nsamples = size(samples, 1)
+
+  subplot := repeat(collect(1:nspecies)', outer=[1, nsamples])
+
+  solutions = hcat([gync(samples[i,:] |> vec, d[:t])[:,d[:species]] for i in 1:nsamples]...)
+
+  delete!(d, :species)
+  #delete!(d, :t)
+
+  d[:t], solutions
 end
+
+
+
+
 #=
 @require PyPlot begin
 
