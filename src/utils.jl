@@ -1,5 +1,8 @@
 using Iterators: product
 
+proposal(s::Sampling) = cov(log(s.samples)) * 2.38^2 / size(s.samples,2)
+proposal(ss::Vector{Sampling}) = cov(log(vcat([s.samples for s in ss]...))) * 2.38^2 / size(ss[1].samples,2)
+
 # construct the WeightedChain corresponding to the concatenated samples and respective data
 function WeightedChain(samplings::Vector{Sampling}, burnin=0)
 

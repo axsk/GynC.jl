@@ -6,6 +6,7 @@ end
 
 import Base.getindex
 
+Base.size(s::Sampling, i) = size(s.samples, i)
 getindex(s::Sampling, i, j) = Sampling(s.samples[i,j], s.config, s.variate)
 
 llh(s::Sampling) = pmap(x -> llh(s.config, x), [s.samples[k, :] |> vec for k in 1:size(s.aamples, 1)])
