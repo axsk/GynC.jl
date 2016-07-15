@@ -7,6 +7,7 @@ import ForwardDiff # to compute derivative of objective
 include("projectsimplex.jl")
 include("priorestimation.jl")
 
+import Distributions
 export WeightedChain
 export emiteration!, euler_A!, euler_phih!
 
@@ -22,7 +23,6 @@ include("data/lausanne.jl")
 include("data/pfizer.jl")
 include("rhs.jl")
 
-import Distributions
 import Sundials
 include("model.jl")
 

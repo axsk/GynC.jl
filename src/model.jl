@@ -62,8 +62,6 @@ end
 
 ### Priors  ###
 
-import Distributions: UnivariateDistribution, Truncated
-
 priory0(sigma::Real) = gaussianmixture(referencesolution(), sigma)
 priorparms(αs)       = Distributions.UnivariateDistribution[
   Distributions.Truncated(Mamba.Flat(), 0, α) for α in αs]
@@ -103,6 +101,7 @@ function SamplerVariate(c::Config)
   linit          = list(init(c))
   
   # note the adjustment to balance out the jump density transformation
+  # justified by g(x|x')/g(x'|x) = lnN(x';ln(x),s) / lnN(x;ln(x'),s) = x'/x
   logf = cache(x -> logpost(c, unlist(x)) + sum(x), 3)
 
   Mamba.SamplerVariate(linit, Mamba.AMMTune(linit, c.propvar, logf;
@@ -132,16 +131,16 @@ function llh(c::Config, x::Vector, periods::Int=2)
   ndata = size(data(c), 1)
 
   periodlength = period(x)
-  range = vcat([(1:ndata) + periodlength * p for p in 0:periods-1]...)
-  perm  = sortperm(range)
-
-  x=x[1:115]
+  times = vcat([(1:ndata) + periodlength * p for p in 0:periods-1]...)
 
   # simulate the trajectory
   local y
   try
-    y = gync(x, range[perm])[invperm(perm),measuredinds]
-  catch
+    # sort the times for the ode solver, and resort the results
+    perm = sortperm(times)
+    y = gync(x, times[perm])[invperm(perm),measuredinds]
+  catch e
+    Base.warn("gync solver threw: $e")
     return -Inf
   end
 
@@ -156,8 +155,8 @@ function llh(c::Config, x::Vector, periods::Int=2)
   sre = 0.
 
   for p = 0:periods-1
-    periodrange = (1:ndata) + ndata * p
-    sre += l2(data(c), y[periodrange, :])
+    periodtimes = (1:ndata) + ndata * p
+    sre += l2(data(c), y[periodtimes, :])
   end
 
   -1/(2*c.sigma_rho^2) * sre

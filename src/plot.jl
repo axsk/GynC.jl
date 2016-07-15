@@ -35,11 +35,28 @@ function plotdata(s::Sampling, species;
   scatter!(p, x-1, y[x]; title=title, kwargs...)
 end
 
+### Plots recipces
+
+# TODO:
+# - plotdata 
+# - plotdata with period
+# - plot reference
+
 using Plots
 
 @userplot PlotSolutions
 @recipe function f(o::PlotSolutions)
-  samples = o.args[1]
+  local samples
+
+  if isa(o.args[1], Matrix) 
+    samples = o.args[1]
+  elseif isa(o.args[1], Sampling) 
+    samples = o.args[1].samples
+  elseif isa(o.args[1], WeightedChain)
+    samples = sample(o.args[1], o.args[2])
+  else
+    error("no valid samples given")
+  end
 
   species       --> measuredinds
   t             --> 0:1/3:30
@@ -49,17 +66,17 @@ using Plots
   seriesalpha   --> 0.1
   layout        --> length(d[:species])
 
-  nspecies = length(d[:species])
+  species  = pop!(d, :species)
+  t        = pop!(d, :t)
+
+  nspecies = length(species)
   nsamples = size(samples, 1)
 
   subplot := repeat(collect(1:nspecies)', outer=[1, nsamples])
 
-  solutions = hcat([gync(samples[i,:] |> vec, d[:t])[:,d[:species]] for i in 1:nsamples]...)
+  solutions = hcat([gync(samples[i,:] |> vec, t)[:,species] for i in 1:nsamples]...)
 
-  delete!(d, :species)
-  #delete!(d, :t)
-
-  d[:t], solutions
+  t, solutions
 end
 
 
