@@ -2,6 +2,8 @@
 
 module GynC
 
+const BATCHDIR = "/nfs/datanumerik/bzfsikor/batch"
+
 import ForwardDiff # to compute derivative of objective
 
 include("projectsimplex.jl")
@@ -12,7 +14,7 @@ export WeightedChain
 export emiteration!, euler_A!, euler_phih!
 
 export Lausanne, Pfizer
-export Config
+export Config, Sampling
 export sample, sample!, batch
 export load, save
 export samples

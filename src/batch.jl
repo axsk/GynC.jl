@@ -1,7 +1,7 @@
 using ClusterManagers
 
-function batch(cs::Vector{Config}, maxiters;
-  dir="/nfs/datanumerik/bzfsikor/batch",
+function batch(cs::Vector{Config}, iters::Vector{Int};
+  dir = BATCHDIR,
   paths = [joinpath(dir, filename(c)) for c in cs],
   maxprocs::Int = 64,
   args...)
@@ -14,35 +14,23 @@ function batch(cs::Vector{Config}, maxiters;
 
     isdir(dir) || mkdir(dir)
 
-    res = pmap((c,p) -> GynC.batch(c, maxiters, p; args...), cs, paths)
+    res = pmap((c,p) -> GynC.batch(c, iters, p; args...), cs, paths)
   finally
     rmprocs(procs)
   end
 end
 
 
-" If the file speciefied in `path` exists, continue mcmc simulation of that file, otherwise start a new one with the given `config`.
-Saves the result every `batchiters` to the file until `maxiters` is reached."
-
-function batch(c::Config, maxiters, path; batchiters = div(maxiters, 10), overwrite=false)
-
-  local s
-  @assert c.thin <= batchiters
-
-  if !isfile(path) || overwrite
-    info("writing to $path")
-    isa(c, Config) || Base.error("Need to give a config")
-    s = sample(c, min(batchiters,maxiters))
-    save(path, s)
-  else
-    info("resuming $path")
-    s = load(path)
-  end
-
+" Sample from `c::Config` and save result for all reached iterations in `iters` to `path` "
+function batch(c::Config, iters::Vector{Int}, path::AbstractString; overwrite=false)
+  s = Sampling(c)
+  !overwrite && isfile(path) && (s = load(path))
   thin = c.thin
-
-  while (iters = min(batchiters, maxiters-(thin*size(s.samples, 1)))) >= thin
-    s = sample!(s, iters)
+  for i in iters
+    n = size(s.samples, 1) * thin
+    i = i - n
+    i < thin && continue
+    s = sample!(s, i)
     save(path, s)
   end
   s
