@@ -176,6 +176,7 @@ end
 
 function l2(data1, data2)
   # TODO: think about the scales
+  # compute from refsol (low 3rd value)? from data?
   # NOTE: dependence on amount of measured data
   diff = (data1 - data2) ./ [120 10 400 15]
   sumabs2(diff[!isnan(diff)])

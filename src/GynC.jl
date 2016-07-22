@@ -7,6 +7,7 @@ const BATCHDIR = "/nfs/datanumerik/bzfsikor/batch"
 import ForwardDiff # to compute derivative of objective
 
 include("projectsimplex.jl")
+include("weightedchain.jl")
 include("priorestimation.jl")
 
 import Distributions
