@@ -35,4 +35,3 @@ function batch(c::Config, iters::Vector{Int}, path::AbstractString; overwrite=fa
   end
   s
 end
-

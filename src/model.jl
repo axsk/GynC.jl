@@ -40,7 +40,7 @@ type Config
 end
 
 data(c::Config) = data(c.patient)
-filename(c::Config) = "p$(c.patient.id)s$(c.sigma_rho)r$(round((c.propvar|>trace) / (defaultpropvar|>trace),3))t$(c.thin)a$(c.adapt).jld"
+filename(c::Config) = "p$(c.patient.id)s$(c.sigma_rho)r$(c.propvar|>trace)t$(c.thin)a$(c.adapt).jld"
 
 # shouldnt the squares be taken after the log?
 
@@ -52,7 +52,7 @@ function Base.show(io::IO, c::Config)
   print(io, "Config:
  patient: ", c.patient, "
  sigma:   $(c.sigma_rho)
- proposal variance: $((c.propvar |> trace) / (defaultpropvar |> trace)) x default trace, $(c.propvar[1,1]) top left
+ propvar trace: $(c.propvar |> trace)
  adapt:   $(c.adapt)
  thin:    $(c.thin)
  init:    $(hash((c.initparms, c.inity0)))
