@@ -7,6 +7,7 @@
 
 - optimization
 -- jump/optim
+-- test jeffreys prior on simple example
 
 - model
 -- em fitting of gaussian prior
@@ -21,3 +22,4 @@
 
 - resample
 -- remove 46:55
+
