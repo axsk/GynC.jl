@@ -1,3 +1,25 @@
+const refy0       = include("data/refy0.jl")
+const refallparms = include("data/refparms.jl")
+
+const speciesnames   = include("data/speciesnames.jl")
+const parameternames = include("data/parameternames.jl")
+
+# cvode solution of the gyncycle system
+gync(y0::Vector, p::Vector, t::Vector) = Sundials.cvode((t,y,dy) -> gyncycle_rhs!(y,p,dy), y0, t)
+
+gync(y0::Vector = refy0, p::Vector = refallparms, t=0:30) = gync(y0, p, convert(Array{Float64, 1}, t))
+
+function referencesolution(resolution=1)
+  sol = gync(refy0, allparms(refparms), collect(0:resolution:30.))
+  # since we get a (small) negative value for OvF, impeding the log transformation for the prior, set this to the next minimal value
+  for j in 1:size(sol, 2)
+    toosmall = sol[:,j] .<= 0
+    sol[toosmall, j] = minimum(sol[!toosmall, j])
+  end
+  sol
+end
+
+
 hplus(s, t, n)  = (s/t)^n / (1. + (s/t)^n)
 hminus(s, t, n) = 1.      / (1. + (s/t)^n)
 

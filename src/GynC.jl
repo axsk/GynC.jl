@@ -24,7 +24,7 @@ export samples
 import DataFrames
 include("data/lausanne.jl")
 include("data/pfizer.jl")
-include("rhs.jl")
+include("gyncycle.jl")
 
 import Sundials
 include("model.jl")

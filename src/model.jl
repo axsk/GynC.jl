@@ -1,20 +1,17 @@
 const measuredinds = [2,7,24,25]
+
 const hillinds     = [4, 6, 10, 18, 20, 22, 26, 33, 36, 39, 43, 47, 49, 52, 55, 59, 65, 95, 98, 101, 103]
 const sampledinds  = deleteat!(collect(1:103), hillinds)
 
-const sampledim = 116
-
-const refy0       = include("data/refy0.jl")
-const refallparms = include("data/refparms.jl")
 const refparms    = refallparms[sampledinds]
 
 #const defaultpropvar = include("data/proposals/allcovs.jl") * 2.38^2 / 115
+# shouldnt the squares be taken after the log?
 uniformpropvar(relprop) = eye(116) * log(1+(relprop^2))
+
 const defaultpropvar = uniformpropvar(0.1)
 
-const speciesnames   = include("data/speciesnames.jl")
-const parameternames = include("data/parameternames.jl")[sampledinds]
-const samplednames   = [parameternames; speciesnames]
+const samplednames   = [parameternames[sampledinds]; speciesnames]
 
 allparms(parms::Vector) = (p = copy(refallparms); p[sampledinds] = parms; p)
 
@@ -42,7 +39,6 @@ end
 data(c::Config) = data(c.patient)
 filename(c::Config) = "p$(c.patient.id)s$(c.sigma_rho)r$(c.propvar|>trace)t$(c.thin)a$(c.adapt).jld"
 
-# shouldnt the squares be taken after the log?
 
 function Config(patient=Lausanne(1); sigma_rho=0.1, propvar=defaultpropvar, adapt=false, thin=1, initparms=refparms, inity0=refy0, p_parms=priorparms(5 * initparms), p_y0=priory0(1) ) 
   Config(patient, sigma_rho, propvar, adapt, thin, initparms, inity0, p_parms, p_y0)
@@ -66,19 +62,8 @@ priory0(sigma::Real) = gaussianmixture(referencesolution(), sigma)
 priorparms(αs)       = Distributions.UnivariateDistribution[
   Distributions.Truncated(Mamba.Flat(), 0, α) for α in αs]
 
-function referencesolution(resolution=1)
-  sol = gync(refy0, allparms(refparms), collect(0:resolution:30.))
-  # since we get a (small) negative value for OvF, impeding the log transformation for the prior, set this to the next minimal value
-  for j in 1:size(sol, 2)
-    toosmall = sol[:,j] .<= 0
-    sol[toosmall, j] = minimum(sol[!toosmall, j])
-  end
-  sol
-end
-
 function gaussianmixture(y::Matrix, stdfactor=1)
    stds = mapslices(std, y, 1) * stdfactor |> vec
-   vars = abs2(stds)
    normals = mapslices(yt->Distributions.MvNormal(yt, stds), y, 2) |> vec
    Distributions.MixtureModel(normals)
 end
@@ -92,6 +77,10 @@ period(x::Vector) = x[116]
 
 list(x::Vector) = log(x)
 unlist(x::Vector) = exp(x)
+
+" sundials cvode solution to the gyncycle model "
+forwardsol(x::Vector, tspan=0:30) = gync(y0(x), allparms(parms(x)), tspan)
+
 # TODO: fix transformation in mcmc
 
 init(c::Config) = (vcat(c.initparms, c.inity0, 28.))
@@ -138,14 +127,14 @@ function llh(c::Config, x::Vector, periods::Int=2)
   try
     # sort the times for the ode solver, and resort the results
     perm = sortperm(times)
-    y = gync(x, times[perm])[invperm(perm),measuredinds]
+    y = forwardsol(x, times[perm])[invperm(perm),measuredinds]
   catch e
-    Base.warn("gync solver threw: $e")
+    Base.warn("forward solution solver threw: $e")
     return -Inf
   end
 
   if any(isnan(y)) > 0
-    Base.warn("encountered NaN in gync result")
+    Base.warn("encountered NaN in solution result")
     return -Inf
   end
 
@@ -162,10 +151,6 @@ function llh(c::Config, x::Vector, periods::Int=2)
   -1/(2*c.sigma_rho^2) * sre
 end
 
-" sundials cvode solution to the gyncycle model "
-gync(x::Vector, tspan=0:30) = gync(y0(x), allparms(parms(x)), tspan)
-
-gync(y0::Vector, p::Vector, t) = Sundials.cvode((t,y,dy) -> gyncycle_rhs!(y,p,dy), y0, convert(Array{Float64, 1}, t))
 
 """ componentwise squared relative difference of two matrices """
 function squaredrelativeerror(data1::Matrix, data2::Matrix)
