@@ -45,8 +45,9 @@ end
 using Plots
 
 @userplot PlotSolutions
-@recipe function f(o::PlotSolutions)
+@recipe function f(o::PlotSolutions; x=0:1/3:60, species=measuredinds)
   local samples
+  t = x
 
   if isa(o.args[1], Matrix) 
     samples = o.args[1]
@@ -58,23 +59,21 @@ using Plots
     error("no valid samples given")
   end
 
-  species       --> measuredinds
-  t             --> 0:1/3:30
   color_palette --> [colorant"steelblue"]
   linewidth     --> 0.1
   label         --> ""
   seriesalpha   --> 0.1
-  layout        --> length(d[:species])
+  layout        --> length(species)
 
-  species  = pop!(d, :species)
-  t        = pop!(d, :t)
+  #species  = pop!(d, :species)
+  #t        = pop!(d, :t)
 
   nspecies = length(species)
   nsamples = size(samples, 1)
 
   subplot := repeat(collect(1:nspecies)', outer=[1, nsamples])
 
-  solutions = hcat([gync(samples[i,:] |> vec, t)[:,species] for i in 1:nsamples]...)
+  solutions = hcat([forwardsol(samples[i,:] |> vec, t)[:,species] for i in 1:nsamples]...)
 
   t, solutions
 end

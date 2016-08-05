@@ -107,3 +107,10 @@ deserialize(s::Serializer) = Base.deserialize(IOBuffer(s.serialized))
 
 load(path) = JLD.load(path, "sampling")
 save(path, s::Sampling) = JLD.save(path, "sampling", s)
+
+function readsamples(dir::AbstractString)
+  cd(dir) do
+    fs = filter(n->contains(n, ".jld"), readdir())
+    ss = map(f->load(f), fs)
+  end
+end
