@@ -2,6 +2,8 @@ using NLopt
 
 count = 0
 
+# marginal loglikelihood function
+# L = sum{m} log(sum{k} L[k,m] * w[k])
 function L(w,l)
 	K, M = size(l)
 	outer = 0.
@@ -26,15 +28,16 @@ function optim(l::Matrix, algorithm=:LN_COBYLA, crit=10)
 	lower_bounds!(opt, zeros(K))
 	upper_bounds!(opt, ones(K))
 
-	#equality_constraint!(opt, (x,g) -> sum(x) - 1)
+	inequality_constraint!(opt, (x,g) -> sum(x) - 1)
 
-	max_objective!(opt, (x,g) -> L(x,l) - abs2(sum(x) - 1) * 1e3)
+	#max_objective!(opt, (x,g) -> L(x,l) - abs2(sum(x) - 1) * 1e3)
+	max_objective!(opt, (x,g) -> L(x,l))
 
 	#ftol_abs!(opt, 1e-3)
 	#xtol_rel!(opt, 1e-3)
 	#xtol_abs!(opt, 1e-4)
-	maxtime!(opt, crit)
-	#maxeval!(opt, maxeval)
+	#maxtime!(opt, crit)
+	maxeval!(opt, crit)
 
 	optimize(opt, ones(K)/K)
 end

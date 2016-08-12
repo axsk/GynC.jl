@@ -1,25 +1,21 @@
 - plots
--- residuum plot
---- individual posterior
+-- [ ] residuum plot
 -- density of iterations
 -- error/convergence plots
 -- [ ] trajectory plots of pi0, pi1
 
 - optimization
--- jump/optim
--- test jeffreys prior on simple example
+-- [ ] jump/optim
+-- [x] test jeffreys prior on simple example (postponed since ilya had peaking results)
 
 - model
--- em fitting of gaussian prior
--- [ ] simulate multiple periods and fit them to repeated patient data
+-- [ ] gaussian mixture em fitting on the resulting posterior
+-- [x] simulate multiple periods and fit them to repeated patient data
+-- [ ] abstract model (generic model(par)->data)
+-- [ ] select sampled parameters 
 
-- mergesame(samples, weights) (?)
-
+- mergesame(samples, weights)
 
 - data
--- check units
--- y0 vs y0_m16
-
-- resample
--- remove 46:55
-
+-- [ ] check units
+-- [ ] y0 vs y0_m16
