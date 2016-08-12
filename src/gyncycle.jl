@@ -7,7 +7,7 @@ const parameternames = include("data/parameternames.jl")
 # cvode solution of the gyncycle system
 gync(y0::Vector, p::Vector, t::Vector) = Sundials.cvode((t,y,dy) -> gyncycle_rhs!(y,p,dy), y0, t)
 
-gync(y0::Vector = refy0, p::Vector = refallparms, t=0:30) = gync(y0, p, convert(Array{Float64, 1}, t))
+gync(y0::Vector = refy0, p::Vector = refallparms, t=0:30) = gync(y0, p, convert(Array{Float64}, t))
 
 function referencesolution(resolution=1)
   sol = gync(refy0, allparms(refparms), collect(0:resolution:30.))
@@ -20,8 +20,13 @@ function referencesolution(resolution=1)
 end
 
 
-hplus(s, t, n)  = (s/t)^n / (1. + (s/t)^n)
-hminus(s, t, n) = 1.      / (1. + (s/t)^n)
+function hplus(s, t, n)
+  q = (s/t)^n
+  q / (1 + q)
+end
+
+hminus(s, t, n) = 1 / (1 + (s/t)^n)
+
 
 # compute the gyncycle rhs and write it into f
 function gyncycle_rhs!(y,p,f)
