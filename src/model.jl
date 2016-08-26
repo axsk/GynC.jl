@@ -11,7 +11,7 @@ uniformpropvar(relprop) = eye(116) * log(1+(relprop^2))
 
 const defaultpropvar = uniformpropvar(0.1)
 
-const samplednames   = [parameternames[sampledinds]; speciesnames]
+const samplednames   = [parameternames[sampledinds]; speciesnames; "periodlength"]
 
 allparms(parms::Vector) = (p = copy(refallparms); p[sampledinds] = parms; p)
 
@@ -27,7 +27,7 @@ Base.show(io::IO, p::Patient) = print(io,p.id)
 type Config
   patient::Patient  # patient measurements
   sigma_rho::Float64   # measurement error / std for likelihood gaussian 
-  propvar::Matrix{Float64}     # proposal variance
+  propvar::Matrix{Float64}     # covariance of guassian proposal in log-parameter space
   adapt::Bool
   thin::Int     # thinning intervall
   initparms::Vector{Float64}      # initial sample

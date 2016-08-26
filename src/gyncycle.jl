@@ -121,11 +121,15 @@ function gyncycle_rhs!(y,p,f)
         # eq. 12: Antral follicel develop. stage 1 (AF1)
         f[AF1] = p[37] * hplus(y[FSH_R], p[38], 3) - p[40] * y[FSH_R] * y[AF1]
 
+        # temporary result since real powers are expensive
+        # decreased runtime from 780ns -> 600 ns
+        temp = (y[LH_R]/p[42]) ^ 3.689
+
         # eq. 13: Antral follicel develop. stage 2 (AF2)
-        f[AF2] = p[40] * y[FSH_R] * y[AF1] - p[41] * (y[LH_R]/p[42]) ^ 3.689 * y[s] * y[AF2]
+        f[AF2] = p[40] * y[FSH_R] * y[AF1] - p[41] * temp * y[s] * y[AF2]
 
         # eq. 14: Antral follicel develop. stage 3 (AF3)
-        f[AF3] = p[41] * (y[LH_R]/p[42]) ^ 3.689 * y[s] * y[AF2] +
+        f[AF3] = p[41] * temp * y[s] * y[AF2] +
                  p[44] * y[FSH_R] * y[AF3] * (1 - y[AF3]/p[45]) -
                  p[46] * (y[LH_R]/p[42]) ^ 5 * y[s] * y[AF3]
 
