@@ -1,7 +1,9 @@
 using Iterators: product
 
-proposal(s::Sampling) = cov(log(s.samples)) * 2.38^2 / size(s.samples,2)
-proposal(ss::Vector{Sampling}) = cov(log(vcat([s.samples for s in ss]...))) * 2.38^2 / size(ss[1].samples,2)
+# compute a proposal density based on the covariance of given samples
+proposal(s::Matrix)   = cov(log(s)) * 2.38^2 / size(s,2)
+proposal(s::Sampling) = proposal(s.samples)
+proposal(ss::Vector{Sampling}) = proposal(vcat([s.samples for s in ss]...))
 
 # construct the WeightedChain corresponding to the concatenated samples and respective data
 function WeightedChain(samplings::Vector{Sampling}, burnin=0)
@@ -113,4 +115,19 @@ function readsamples(dir::AbstractString)
     fs = filter(n->contains(n, ".jld"), readdir())
     ss = map(f->load(f), fs)
   end
+end
+
+function tabulate(ss::Vector{Sampling})
+  vcat(map(ss) do s
+    DataFrames.DataFrame(person = s.config.patient.id,
+                         sigma  = s.config.sigma_rho,
+                         adapt  = s.config.adapt,
+                         thin   = s.config.thin,
+                         length = size(s.samples, 1),
+                         unique = length(unique(s.samples[:,1])),
+                         tracepropinit = let L=s.variate.tune.SigmaL; trace(L*L') end,
+                         tracepropadapt = let L=s.variate.tune.SigmaLm; trace(L*L') end,
+                         sampling = s
+                        )
+    end ...)
 end

@@ -11,7 +11,7 @@ tmp = tempname() * ".jld"
 s = batch(Config(Lausanne(1), thin=2), [10,20], tmp)
 s = load(tmp)
 s = GynC.sample!(s, 20)
-@assert size(s.samples) == (20, GynC.sampledim)
+@assert size(s.samples) == (20, 116)
 rm(tmp)
 
 

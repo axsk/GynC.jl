@@ -28,7 +28,9 @@ function Base.show(io::IO, s::Sampling)
 end
 
 mean(s::Sampling) = s.variate.tune.Mv
-sigma(s::Sampling) = s.variate.tune.SigmaLm
+
+propinit(s::Sampling)  = s.variate.tune.SigmaL
+propadapt(s::Sampling) = s.variate.tune.SigmaLm
 
 data(s::Sampling) = data(s.config)
 
