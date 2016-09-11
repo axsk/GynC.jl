@@ -13,7 +13,11 @@ const defaultpropvar = uniformpropvar(0.1)
 
 const samplednames   = [parameternames[sampledinds]; speciesnames; "periodlength"]
 
-allparms(parms::Vector) = (p = copy(refallparms); p[sampledinds] = parms; p)
+function allparms(parms::Vector)
+  p = copy(refallparms)
+  p[sampledinds] = parms
+  p
+end
 
 
 type Patient
