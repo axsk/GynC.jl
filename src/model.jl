@@ -129,7 +129,9 @@ function llh(c::Config, x::Vector, periods::Int=2)
   # simulate the trajectory
   local y
   try
-    y = forwardsol(x, t)[:,measuredinds]
+    # sort the times for the ode solver, and resort the results
+    perm = sortperm(t)
+    y = forwardsol(x, t[perm])[invperm(perm),measuredinds]
   catch e
     Base.warn("forward solution solver threw: $e")
     return -Inf
