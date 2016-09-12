@@ -1,7 +1,5 @@
 # given X-samples `x`, the forwardd map `phi`:X->Z, and the error density `err`, compute the pairwise likelihood matrix Lz, corresponding to L(x|z)
 
-Lz(x, phi, err) = Lz(map(phi, x), err)
-
 function Lz(z::Vector, err::Function)
   z = map(phi, xs)
   n = length(z)
@@ -26,27 +24,16 @@ function Hz(w::Vector, Lz::Matrix)
   -dot(log(rhoz), w)
 end
 
-# what we need
-samples of different persons
-merge them
-compute likelihoods for each person
-co
 
-objective
- likelihood
-  personal likelihoods
-   solutions
- entropy
-  likelihoods of x generating z
-   solutions
+phi(x::Vector) = forwardsol(x, 1:31)
+phi(x::Matrix) = [phi(x[i,:]) for i in 1:size(x, 1)]
+
+function obj(x::Matrix, w::Vector, datas::Vector, sigma::Real)
+  z = phi(x)
+  L = [llh(z, data, sigma) for z in z, data in datas]
+  err(z1, z2) = exp(llh(z1, z2, sigma))
+  A(w,L) + Hz(w, Lz(z, err))
 end
 
-phi(x) = forwardsol(x, 1:31)
-
-function obj(x,w, datas)
-  z = map(phi, x)
-
-  L = map(llhs, datas)
-  A(w,L) + Hz(w, Lz(z, l2))
-end
-  
+# log L(z|data), i.e. the measurement error, up to a constant
+llh(z, data, sigma) = znorm(z, data) / (2*sigma^2)

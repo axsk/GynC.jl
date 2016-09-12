@@ -153,8 +153,6 @@ function llh(c::Config, x::Vector, periods::Int=2)
   -1/(2*c.sigma_rho^2) * sre
 end
 
-znorm = l2
-
 function l2(data1, data2)
   # TODO: think about the scales
   # compute from refsol (low 3rd value)? from data?
@@ -163,3 +161,4 @@ function l2(data1, data2)
   sumabs2(diff[!isnan(diff)])
 end
 
+znorm = l2
