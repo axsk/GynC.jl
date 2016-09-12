@@ -25,22 +25,51 @@ function sample(s::WeightedChain, n=1)
   s.samples[i,:]
 end
 
+# construct the WeightedChain corresponding to the concatenated samples and respective data
+function WeightedChain(samplings::Vector{Sampling}, burnin=0)
 
-#=function sample(s::WeightedChain, n=1)
-  norm = sum(s.weights)
-  N    = size(s.samples, 1)
-  
-  S = Array{Float64}(n, size(s.samples, 2))
+  # remove repeating samples
+  curr = zeros(samplings[1].samples[1,:])
+  samplevec = Matrix{Float64}[]
+  counts  = Int[]
 
-  for i = 1:n
-    j = rand(1:N)
-    while rand() > (s.weights[j] / norm)
-      j = rand(1:N)
+  for s in samplings
+    for i in (1+burnin):size(s.samples, 1)
+      if s.samples[i,:] == curr
+        counts[end] += 1
+      else
+        curr = s.samples[i,:]
+        push!(samplevec, curr)
+        push!(counts, 1)
+      end
     end
-    S[i, :] = s.samples[j, :]
   end
-  S
-end=#
+
+  # compute prior and likelihoods
+  prior   = map(samplevec) do s
+              logprior(samplings[1].config, s |> vec)
+            end
+
+  lhs     = pmap(product(Vector[samplevec], [s.config for s in samplings])) do t
+              map(s->llh(t[2], s |> vec), t[1])
+            end 
+  lhs     = hcat(lhs...)
+
+  # normalize for stability
+  prior = (prior - maximum(prior))  |> exp
+  lhs   = (lhs  .- maximum(lhs, 1)) |> exp
+  
+  samples = vcat(samplevec...)
+  
+  lhs   = lhs ./ sum(lhs, 1)
+  weights = counts / sum(counts)
+  density = Base.mean(lhs, 2) .* prior |> vec
+  density = density / sum(density)
+
+  # create weighted chain
+  WeightedChain(samples, lhs, weights, density)
+end
+
 
 density(c::WeightedChain) = c.upd .* c.weights
 

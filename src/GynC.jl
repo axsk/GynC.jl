@@ -10,7 +10,7 @@ include("projectsimplex.jl")
 include("weightedchain.jl")
 include("priorestimation.jl")
 
-import Distributions
+using Distributions
 export WeightedChain
 export emiteration!, euler_A!, euler_phih!
 

@@ -5,7 +5,7 @@ const speciesnames   = include("data/speciesnames.jl")
 const parameternames = include("data/parameternames.jl")
 
 # cvode solution of the gyncycle system
-gync(y0::Vector, p::Vector, t::Vector; reltol=1e-3,abstol=1e-6) = Sundials.cvode((t,y,dy) -> gyncycle_rhs!(y,p,dy), y0, t, reltol=reltol, abstol=abstol)
+gync(y0::Vector, p::Vector, t::Vector; reltol=1e-4,abstol=1e-4) = Sundials.cvode((t,y,dy) -> gyncycle_rhs!(y,p,dy), y0, t, reltol=reltol, abstol=abstol)
 
 gync(y0::Vector = refy0, p::Vector = refallparms, t=0:30) = gync(y0, p, convert(Array{Float64}, t))
 

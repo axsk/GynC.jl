@@ -4,20 +4,41 @@ type Sampling
   variate::Mamba.AMMVariate
 end
 
-import Base.getindex
-
+# Base extensions to index Samples
+Base.length(s::Sampling) = size(s.samples, 1)
 Base.size(s::Sampling, i) = size(s.samples, i)
-getindex(s::Sampling, i, j) = Sampling(s.samples[i,j], s.config, s.variate)
+Base.getindex(s::Sampling, i)    = s[i,:]
+Base.getindex(s::Sampling, i, j) = Sampling(s.samples[i,j], s.config, s.variate)
 
-llh(s::Sampling) = pmap(x -> llh(s.config, x), [s.samples[k, :] |> vec for k in 1:size(s.aamples, 1)])
+# number of unique samples
+uniques(s::Sampling) = length(unique(s.samples[:,1]))
 
+# return the covariance matrix of the initial proposal
+function propinit(s::Sampling) 
+  l = s.variate.tune.SigmaL
+  l*l'
+end
+
+# return the data/measurements
+data(s::Sampling) = data(s.config)
+
+# return the covariance matrix of the adaptive proposal
+function propadapt(s::Sampling)
+  l = s.variate.tune.SigmaLm
+  l*l'
+end
+
+
+#llh(s::Sampling) = pmap(x -> llh(s.config, x), [s.samples[k, :] |> vec for k in 1:size(s.aamples, 1)])
+
+# compute the ode solutions to the given samples
 function solutions(s::Sampling, t=0:30)
   n = size(s.samples, 1)
-  res = Array(Array, n)
+  sols = Array(Array, n)
   for k = 1:n
-    res[k] = gync(s.samples[k,:] |> vec, t) 
+    sols[k] = gync(s.samples[k,:] |> vec, t) 
   end
-  res
+  sols
 end
 
 function Base.show(io::IO, s::Sampling)

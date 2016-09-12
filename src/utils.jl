@@ -5,65 +5,6 @@ proposal(s::Matrix)   = cov(log(s)) * 2.38^2 / size(s,2)
 proposal(s::Sampling) = proposal(s.samples)
 proposal(ss::Vector{Sampling}) = proposal(vcat([s.samples for s in ss]...))
 
-# construct the WeightedChain corresponding to the concatenated samples and respective data
-function WeightedChain(samplings::Vector{Sampling}, burnin=0)
-
-
-  # remove repeating samples
-  curr = zeros(samplings[1].samples[1,:])
-  samplevec = Matrix{Float64}[]
-  counts  = Int[]
-
-  for s in samplings
-    for i in (1+burnin):size(s.samples, 1)
-      if s.samples[i,:] == curr
-        counts[end] += 1
-      else
-        curr = s.samples[i,:]
-        push!(samplevec, curr)
-        push!(counts, 1)
-      end
-    end
-  end
-
-
-  # compute prior and likelihoods
-
-  prior   = map(samplevec) do s
-              logprior(samplings[1].config, s |> vec)
-            end
-
-
-  lhs     = pmap(product(Vector[samplevec], [s.config for s in samplings])) do t
-              map(s->llh(t[2], s |> vec), t[1])
-            end 
-
-  lhs     = hcat(lhs...)
-
-  #prior   = Float64[
-  #           logprior(samplings[1].config, samples[i,:] |> vec)
-  #           for i in 1:size(samples,1)]
-
-  #lhs     = Float64[
-  #            llh(s.config, samples[i,:] |> vec)
-  #            for i in 1:size(samples,1), s in samplings]
-
-  # normalize for stability
-  prior = (prior - maximum(prior))  |> exp
-  lhs   = (lhs  .- maximum(lhs, 1)) |> exp
-  
-  samples = vcat(samplevec...)
-
-  
-  lhs   = lhs ./ sum(lhs, 1)
-  weights = counts / sum(counts)
-  density = Base.mean(lhs, 2) .* prior |> vec
-  density = density / sum(density)
-
-  # create weighted chain
-  WeightedChain(samples, lhs, weights, density)
-end
-
 
 ### Cache for likelihood evaluation ###
 
@@ -117,17 +58,22 @@ function readsamples(dir::AbstractString)
   end
 end
 
-function tabulate(ss::Vector{Sampling})
-  vcat(map(ss) do s
-    DataFrames.DataFrame(person = s.config.patient.id,
-                         sigma  = s.config.sigma_rho,
-                         adapt  = s.config.adapt,
-                         thin   = s.config.thin,
-                         length = size(s.samples, 1),
-                         unique = length(unique(s.samples[:,1])),
-                         tracepropinit = let L=s.variate.tune.SigmaL; trace(L*L') end,
-                         tracepropadapt = let L=s.variate.tune.SigmaLm; trace(L*L') end,
-                         sampling = s
-                        )
-    end ...)
+# read all samplings from directory and create dataframe overview
+function readdir(dir)
+  ss = readsamples(dir)
+end
+
+function dataframe(ss::Vector{Sampling})
+  dfs = [DataFrames.DataFrame(
+    sample=s,
+    data=s.config.patient.id, # ugly, use methods
+    sigma=s.config.sigma_rho,
+    adapt=s.config.adapt,
+    thin=s.config.thin,
+    length=length(s),
+    unique=uniques(s),
+    tracepropinit=trace(propinit(s)),
+    tracepropadapt=trace(propadapt(s))) 
+    for s in ss]
+  vcat(dfs...)
 end
