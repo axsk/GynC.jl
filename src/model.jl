@@ -119,17 +119,17 @@ function logpost(c::Config, x::Vector)
   l
 end
 
+meastimes(days, periods, periodlength) = vcat([(1:days) + periodlength * p for p in 0:periods-1]...)
 
 function llh(c::Config, x::Vector, periods::Int=2)
   ndata = size(data(c), 1)
 
-  periodlength = period(x)
-  times = vcat([(1:ndata) + periodlength * p for p in 0:periods-1]...)
+  t = meastimes(ndata, periods, period(x))
 
   # simulate the trajectory
   local y
   try
-    y = forwardsol(x, times)[:,measuredinds]
+    y = forwardsol(x, t)[:,measuredinds]
   catch e
     Base.warn("forward solution solver threw: $e")
     return -Inf
@@ -153,13 +153,7 @@ function llh(c::Config, x::Vector, periods::Int=2)
   -1/(2*c.sigma_rho^2) * sre
 end
 
-
-""" componentwise squared relative difference of two matrices """
-function squaredrelativeerror(data1::Matrix, data2::Matrix)
-  diff = data1 - data2
-  reldiff = diff ./ data1
-  return sumabs2(reldiff[!isnan(reldiff)])
-end
+znorm = l2
 
 function l2(data1, data2)
   # TODO: think about the scales

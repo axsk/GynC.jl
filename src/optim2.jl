@@ -1,5 +1,8 @@
 # given X-samples `x`, the forwardd map `phi`:X->Z, and the error density `err`, compute the pairwise likelihood matrix Lz, corresponding to L(x|z)
-function Lz(x, phi, err)
+
+Lz(x, phi, err) = Lz(map(phi, x), err)
+
+function Lz(z::Vector, err::Function)
   z = map(phi, xs)
   n = length(z)
   L = Array{Float64}(n,n)
@@ -8,14 +11,14 @@ function Lz(x, phi, err)
       L[i,j] = L[j,i] = err(z[i], z[j])
     end
   end
-  L::Matrix{Float64}
+  L
 end
-
-Hz(pi, phi, err) = Hz(pi, Lz(pi, phi, err))
 
 # compute the prior predictive distribution entropy
 # w - the weights of the samples
 # Lz - the z likelihood matrix
+
+Hz(pi, phi, err) = Hz(pi, Lz(pi, phi, err))
 
 function Hz(w::Vector, Lz::Matrix)
   rhoz = Lz * w
@@ -23,16 +26,27 @@ function Hz(w::Vector, Lz::Matrix)
   -dot(log(rhoz), w)
 end
 
+# what we need
+samples of different persons
+merge them
+compute likelihoods for each person
+co
 
-#= old 
-
-# compute the marginal likelihood / evidence entropy
-# compute the entropy of the prior predictive distribution (of z given pi)
-function Hz(pi, L, phi)
-  @assert sum(weights(pi)) == 1
-  zs = map(phi, pi)
-  rhoz = [dot([L(z,x) for x in samples(pi)], weights(pi)) for z in zs]
-  rhoz = rhoz / sum(rhoz)
-  -dot(log(rhoz), weights(pi))
+objective
+ likelihood
+  personal likelihoods
+   solutions
+ entropy
+  likelihoods of x generating z
+   solutions
 end
-=#
+
+phi(x) = forwardsol(x, 1:31)
+
+function obj(x,w, datas)
+  z = map(phi, x)
+
+  L = map(llhs, datas)
+  A(w,L) + Hz(w, Lz(z, l2))
+end
+  
