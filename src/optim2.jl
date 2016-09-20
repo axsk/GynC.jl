@@ -14,7 +14,7 @@ function hzobj(x::Matrix{Float64}, datas::Vector{Matrix{Float64}})
 
   L_data_zs = L(datas, zsim)
   L_zerr_zs = L(zerr, zsim)
-  function o(w::Vector{Float64})
+  function o(w::Vector)
     prod(L_data_zs * w) + Hz(w, L_zerr_zs)
   end
 end
