@@ -29,7 +29,7 @@ function propadapt(s::Sampling)
 end
 
 
-#llh(s::Sampling) = pmap(x -> llh(s.config, x), [s.samples[k, :] |> vec for k in 1:size(s.aamples, 1)])
+llh(s::Sampling) = pmap(x -> llh(s.config, x), [s.samples[k, :] |> vec for k in 1:size(s.samples, 1)])
 
 # compute the ode solutions to the given samples
 function solutions(s::Sampling, t=0:30)
@@ -48,12 +48,7 @@ function Base.show(io::IO, s::Sampling)
   config:  ", (s.config))
 end
 
-mean(s::Sampling) = s.variate.tune.Mv
 
-propinit(s::Sampling)  = s.variate.tune.SigmaL
-propadapt(s::Sampling) = s.variate.tune.SigmaLm
-
-data(s::Sampling) = data(s.config)
 
 function Sampling(c::Config)
   v = SamplerVariate(c)

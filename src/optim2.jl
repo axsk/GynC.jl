@@ -1,15 +1,3 @@
-"compute the pairwise likelihood matrix Lz, with Lz_ij = L(x_i|z_j)"
-function Lz(z::Vector, err::Function)
-  n = length(z)
-  L = Array{Float64}(n,n)
-  for i=1:n
-    for j=i:n
-      L[i,j] = L[j,i] = err(z[i], z[j])
-    end
-  end
-  L
-end
-
 "compute the prior predictive distribution entropy
  w - the weights of the samples
  Lz - the z likelihood matrix (see above)"
@@ -20,16 +8,24 @@ function Hz(w::Vector, Lz::Matrix)
 end
 
 "construct the objective function w -> L + Hz"
-function hzobj(x::Matrix, datas::Vector, err::Function)
-  z = phi(x)
-  L = [err(z, data) for z in z, data in datas]
-  Lz = Lz(z, err)
-  function o(w)
-    A(w,L) + Hz(w, Lz)
+function hzobj(x::Matrix{Float64}, datas::Vector{Matrix{Float64}})
+  zsim = phi(x)
+  zerr = addmeaserror(zsim)
+
+  L_data_zs = L(datas, zsim)
+  L_zerr_zs = L(zerr, zsim)
+  function o(w::Vector{Float64})
+    prod(L_data_zs * w) + Hz(w, L_zerr_zs)
   end
 end
 
-hzobj(x::Matrix, datas::Vector, sigma::Real) = hzobj(x, datas, (a, b) -> rho_e(a, b, sigma))
+
+
+addmeaserror(zs::Vector) = map(z->z+rand(rho_e, size(zs[1],1))', zs)
+
+# likelihood of measurments
+L(z1::Vector, z2::Vector)   = Float64[rho_e_m(a - b) for a in z1, b in z2]
+
 
 ### Model specific ###
 
@@ -37,5 +33,14 @@ hzobj(x::Matrix, datas::Vector, sigma::Real) = hzobj(x, datas, (a, b) -> rho_e(a
 phi(x::Vector) = forwardsol(x, 1:31)[:, measuredinds]
 phi(x::Matrix) = [phi(x[i,:] |> vec) for i in 1:size(x, 1)]
 
-# log L(z|data), i.e. the measurement error, up to normalization
-rho_e(z1, z2, sigma) = exp(-znorm(z1, z2) / (2*sigma^2))
+const rho_e = MvNormal([120,10,400,15] * 0.1)
+
+function rho_e_m(x::Matrix{Float64})
+  p = 0.
+  for i = 1:size(x, 1)
+    row = x[i,:] |> vec
+    any(isnan(row)) && continue
+    p += logpdf(rho_e, row)
+  end
+  exp(p)
+end

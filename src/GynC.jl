@@ -44,6 +44,10 @@ include("projectsimplex.jl")
 include("weightedchain.jl")
 include("priorestimation.jl")
 
+#include("optim.jl")
+include("optim2.jl")
+
+
 include("plot.jl")
 
 end

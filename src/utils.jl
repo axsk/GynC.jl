@@ -4,6 +4,7 @@ using Iterators: product
 proposal(s::Matrix)   = cov(log(s)) * 2.38^2 / size(s,2)
 proposal(s::Sampling) = proposal(s.samples)
 proposal(ss::Vector{Sampling}) = proposal(vcat([s.samples for s in ss]...))
+meanprop(ss::Vector{Sampling}) = mean(map(proposal, ss))
 
 
 ### Cache for likelihood evaluation ###
@@ -56,11 +57,6 @@ function readsamples(dir::AbstractString)
     fs = filter(n->contains(n, ".jld"), readdir())
     ss = map(f->load(f), fs)
   end
-end
-
-# read all samplings from directory and create dataframe overview
-function readdir(dir)
-  ss = readsamples(dir)
 end
 
 function dataframe(ss::Vector{Sampling})

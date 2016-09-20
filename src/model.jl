@@ -52,7 +52,7 @@ function Base.show(io::IO, c::Config)
   print(io, "Config:
  patient: ", c.patient, "
  sigma:   $(c.sigma_rho)
- propvar trace: $(c.propvar |> trace)
+ tr(initprop): $(c.propvar |> trace)
  adapt:   $(c.adapt)
  thin:    $(c.thin)
  init:    $(hash((c.initparms, c.inity0)))
@@ -83,7 +83,11 @@ list(x::Vector) = log(x)
 unlist(x::Vector) = exp(x)
 
 " sundials cvode solution to the gyncycle model "
-forwardsol(x::Vector, tspan=0:30) = gync(y0(x), allparms(parms(x)), tspan)
+forwardsol(x::Vector, tspan=0:30) = try
+  gync(y0(x), allparms(parms(x)), tspan)
+catch
+  fill(NaN, length(tspan), length(y0(x)))
+end
 
 # TODO: fix transformation in mcmc
 
