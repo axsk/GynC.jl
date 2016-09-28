@@ -30,7 +30,7 @@ function WeightedChain(samplings::Vector{Sampling}, burnin=0)
 
   # remove repeating samples
   curr = zeros(samplings[1].samples[1,:])
-  samplevec = Matrix{Float64}[]
+  samplevec = Vector[]
   counts  = Int[]
 
   for s in samplings
@@ -47,19 +47,19 @@ function WeightedChain(samplings::Vector{Sampling}, burnin=0)
 
   # compute prior and likelihoods
   prior   = map(samplevec) do s
-              logprior(samplings[1].config, s |> vec)
+              logprior(samplings[1].config, s)
             end
 
-  lhs     = pmap(product(Vector[samplevec], [s.config for s in samplings])) do t
-              map(s->llh(t[2], s |> vec), t[1])
+  lhs     = pmap([s.config for s in samplings]) do c
+              map(s->llh(c, s), samplevec)
             end 
-  lhs     = hcat(lhs...)
+  lhs     = hcat(lhs...)'
 
   # normalize for stability
   prior = (prior - maximum(prior))  |> exp
   lhs   = (lhs  .- maximum(lhs, 1)) |> exp
   
-  samples = vcat(samplevec...)
+  samples = hcat(samplevec...)'
   
   lhs   = lhs ./ sum(lhs, 1)
   weights = counts / sum(counts)
