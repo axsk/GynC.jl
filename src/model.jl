@@ -5,7 +5,7 @@ const sampledinds  = deleteat!(collect(1:103), hillinds)
 
 const refparms    = refallparms[sampledinds]
 
-const model_measerrors = [120, 10, 400, 15]
+const model_measerrors = [120, 10, 400, 15.]
 
 #const defaultpropvar = include("data/proposals/allcovs.jl") * 2.38^2 / 115
 # shouldnt the squares be taken after the log?
