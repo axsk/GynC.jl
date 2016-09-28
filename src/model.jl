@@ -5,6 +5,8 @@ const sampledinds  = deleteat!(collect(1:103), hillinds)
 
 const refparms    = refallparms[sampledinds]
 
+const model_measerrors = [120, 10, 400, 15]
+
 #const defaultpropvar = include("data/proposals/allcovs.jl") * 2.38^2 / 115
 # shouldnt the squares be taken after the log?
 uniformpropvar(relprop) = eye(116) * log(1+(relprop^2))
@@ -149,22 +151,18 @@ function llh(c::Config, x::Vector, periods::Int=2)
 
   # TODO: check index/time relations
   # simulate periodic data by comparing it to the shifted simulated trajectory reapeatedy
-  sre = 0.
+  l = 0.
 
   for p = 0:periods-1
     periodtimes = (1:ndata) + ndata * p
-    sre += l2(data(c), y[periodtimes, :])
+    yperiod = y[periodtimes, :]
+    l += llh_measerror(data(c) - yperiod)
   end
-
-  -1/(2*c.sigma_rho^2) * sre
+  
+  l
 end
 
-function l2(data1, data2)
-  # TODO: think about the scales
-  # compute from refsol (low 3rd value)? from data?
-  # NOTE: dependence on amount of measured data
-  diff = (data1 - data2) ./ [120 10 400 15]
-  sumabs2(diff[!isnan(diff)])
+function llh_measerror(error::Matrix)
+  scaled = error ./ model_measerrors'
+  -sumabs2(scaled[!isnan(scaled)])
 end
-
-znorm = l2
