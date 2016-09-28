@@ -53,7 +53,7 @@ function WeightedChain(samplings::Vector{Sampling}, burnin=0)
   lhs     = pmap([s.config for s in samplings]) do c
               map(s->llh(c, s), samplevec)
             end 
-  lhs     = hcat(lhs...)'
+  lhs     = hcat(lhs...)
 
   # normalize for stability
   prior = (prior - maximum(prior))  |> exp
