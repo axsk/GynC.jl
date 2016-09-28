@@ -1,2 +1,3 @@
 *.jld
 *.out
+.ipynb_checkpoints

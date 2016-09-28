@@ -42,6 +42,3 @@ function optim(l::Matrix, algorithm=:LN_COBYLA, crit=10)
 	optimize(opt, ones(K)/K)
 end
 
-using BenchmarkTools
-l=rand(200,8)
-@time optim(l)

@@ -16,6 +16,8 @@ rm(tmp)
 
 
 info("testing sampling plots")
+using Plots
+pyplot()
 plotsolutions(s, 1)
 plotdata(s, 1)
 

@@ -2,12 +2,10 @@
 
 module GynC
 
+using Requires
+
 const BATCHDIR = "/nfs/datanumerik/bzfsikor/batch"
 
-import ForwardDiff # to compute derivative of objective
-
-
-using Distributions
 export WeightedChain
 export emiteration!, euler_A!, euler_phih!
 
@@ -16,20 +14,19 @@ export Config, Sampling
 export sample, sample!, batch
 export load, save
 export samples
-
+export plotsolutions, plotdata
 
 import DataFrames
 include("data/lausanne.jl")
 include("data/pfizer.jl")
 include("gyncycle.jl")
 
+using Distributions
 import Sundials
 include("model.jl")
 
 import Mamba
 include("sampling.jl")
-
-export plotsolutions, plotdata
 
 
 
@@ -39,15 +36,18 @@ include("utils.jl")
 include("batch.jl")
 
 
+# EMPIRICIAL BAYES
+
+import ForwardDiff # to compute derivative of objective
 
 include("projectsimplex.jl")
 include("weightedchain.jl")
 include("priorestimation.jl")
 
-#include("optim.jl")
+@require NLopt include("optim.jl")
 include("optim2.jl")
 
+# PLOT
 
 include("plot.jl")
-
 end

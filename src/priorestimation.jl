@@ -74,7 +74,6 @@ end
 # and then optimize the resulting 
 # posterior P(π|z) ~=  P(z|π) * h(π)
 
-## unser objective hier is jetzt eher log(A(π) * e^h(π)), warum?
 phih(w, pi1, L) = log(A(w, L)) + entropy(w, pi1)
 
 # with
