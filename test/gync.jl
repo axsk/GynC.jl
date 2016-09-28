@@ -16,8 +16,7 @@ rm(tmp)
 
 
 info("testing sampling plots")
-Plots.unicodeplots()
-plotsolutions(s, 1) |> print
+plotsolutions(s, 1)
 plotdata(s, 1)
 
 
