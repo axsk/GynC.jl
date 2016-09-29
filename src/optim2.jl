@@ -1,27 +1,30 @@
-phi(x::Vector) = forwardsol(x, 1:31)[:, measuredinds]
-phi(x::Matrix) = [phi(x[i,:] |> vec) for i in 1:size(x, 1)]
+function hzobj(samples::Matrix{Float64}, datas::Vector{Matrix{Float64}})
+  zs = phi(samples)
+  Ld = Lzz(datas, zs)     # L(d|z)
+  Lz = Lzz(zt(zs), zs)    # L(zt|z), zt=z+e
+  w -> penalized_llh(w, Ld, Lz)
+end
 
+penalized_llh(w, Ld, Lz) = logLw(w, Ld) + Hz(w, Lz)
+
+# marginal likelihood for w
+logLw(w, Ld) = sum(log(Ld * w)) / size(Ld, 1)
+
+# z-entropy
 function Hz(w::Vector, Lz::Matrix)
-  rhoz = Lz * w
-  rhoz = rhoz / sum(rhoz)
-  -dot(log(rhoz), w)
+  rhoz = Lz * w           # \Int L(z|x) * pi(x) dx_j
+  rhoz = rhoz / sum(rhoz) # \Int rhoz(z) dz = 1
+  -dot(log(rhoz), w)      # -\Int log(rhoz(z)) * rhoz(z) dz
 end
 
-"construct the objective function w -> L + Hz"
-function hzobj(x::Matrix{Float64}, datas::Vector{Matrix{Float64}})
-  zsim = phi(x)
-  zerr = addmeaserror(zsim)
+###
 
-  L_data_zs = llh_measerror(datas, zsim)
-  L_zerr_zs = llh_measerror(zerr, zsim)
-
-  w -> sum(L_data_zs * w) / length(datas) + Hz(w, L_zerr_zs)
-end
-
+const hz_simdays = 31
 const rho_e = MvNormal(model_measerrors)
-addmeaserror(zs::Vector) = map(z->z+rand(rho_e, size(zs[1],1))', zs)
 
-# likelihood of measurments
-function llh_measerror(z1::Vector, z2::Vector)
-  [llh_measerror(a - b) for a in z1, b in z2]
-end
+phi(x::Vector) = forwardsol(x, 0:hz_simdays-1)[:, measuredinds]
+phi(x::Matrix) = [phi(x[i,:]) for i in 1:size(x, 1)]
+
+zt(zs::Vector) = map(z->z+rand(rho_e, hz_simdays)', zs)
+
+Lzz(a, b) = [exp(llh_measerror(zi - zj)) for zi in a, zj in b]

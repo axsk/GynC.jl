@@ -45,9 +45,11 @@ include("weightedchain.jl")
 include("priorestimation.jl")
 
 @require NLopt include("optim.jl")
+export hzobj
 include("optim2.jl")
 
 # PLOT
 
 include("plot.jl")
+
 end
