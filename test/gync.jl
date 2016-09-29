@@ -16,6 +16,7 @@ rm(tmp)
 
 
 info("testing sampling plots")
+Pkg.build("PyPlot")
 using Plots
 plotsolutions(s, 1)
 plotdata(s, 1)
