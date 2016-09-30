@@ -43,3 +43,9 @@ function projectsimplex_sort!{T <: Real}(y::Array{T, 1}, temp=similar(y))
   end
   y
 end
+
+" given `w` and `grad`, compute `Psi_S(w) := w + S_w * grad`
+S_w is constructed in a manner to enforce that the result lies on the unit simplex "
+function psi_S(w, gradient)
+  w + w.* gradient - w*dot(w, gradient)
+end
