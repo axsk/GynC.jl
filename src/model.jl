@@ -85,11 +85,7 @@ list(x::Vector) = log(x)
 unlist(x::Vector) = exp(x)
 
 " sundials cvode solution to the gyncycle model "
-forwardsol(x::Vector, tspan=0:30) = try
-  gync(y0(x), allparms(parms(x)), tspan)
-catch
-  fill(NaN, length(tspan), length(y0(x)))
-end
+forwardsol(x::Vector, tspan=0:30) = gync(y0(x), allparms(parms(x)), tspan)
 
 # TODO: fix transformation in mcmc
 
@@ -133,23 +129,17 @@ function llh(c::Config, x::Vector, periods::Int=2)
   t = meastimes(ndata, periods, period(x))
 
   # simulate the trajectory
-  local y
-  try
-    # sort the times for the ode solver, and resort the results
-    perm = sortperm(t)
-    y = forwardsol(x, t[perm])[invperm(perm),measuredinds]
-  catch e
-    Base.warn("forward solution solver threw: $e")
-    return -Inf
-  end
+  # sort the times for the ode solver, and resort the results
+  perm = sortperm(t)
+  y = forwardsol(x, t[perm])[invperm(perm),measuredinds]
 
   if any(isnan(y)) > 0
     Base.warn("encountered NaN in solution result")
     return -Inf
   end
 
-
   # TODO: check index/time relations
+
   # simulate periodic data by comparing it to the shifted simulated trajectory reapeatedy
   l = 0.
 
@@ -164,5 +154,7 @@ end
 
 function llh_measerror(error::Matrix)
   scaled = error ./ model_measerrors'
-  -sumabs2(scaled[!isnan(scaled)])
+  nonnan = !isnan(scaled)
+  #!any(nonnan) && return -Inf
+  l=-sumabs2(scaled[nonnan])
 end
