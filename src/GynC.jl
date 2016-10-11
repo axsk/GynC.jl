@@ -42,6 +42,7 @@ import ForwardDiff # to compute derivative of objective
 
 include("projectsimplex.jl")
 include("weightedchain.jl")
+include("weightedsampling.jl")
 include("priorestimation.jl")
 
 @require NLopt include("optim.jl")

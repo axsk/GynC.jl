@@ -1,4 +1,5 @@
 using GynC, Iterators
+
 include("odes.jl")
 include("utils.jl")
 
@@ -40,7 +41,7 @@ Lzz = [rho_error(z-zp) for zp in zps,   z in zs]
 marginallikelihood(w) = GynC.logLw(w, Lzd)
 zentropy(w) = GynC.Hz(w, Lzz)
 
-pml(w, s=1) = marginallikelihood(w) +s*zentropy(w)
+pml(w, s=1) = marginallikelihood(w) + s*zentropy(w)
 
 ## prior estimation
 
@@ -48,8 +49,12 @@ niter = 100
 h  = 0.001
 w0 = ones(nsamples) / nsamples
 
-# em algo
+# weights after `niter` EM steps
+function ws_em(w0, niter)
+    take(iterate(w->GynC.emiteration(w, Lzd'), w0), niter) |> collect # todo unify L matrix orientation
+end
 
-ws_em(w0, niter) = take(iterate(w->GynC.emiteration(w, Lzd'), w0), niter) |> collect # todo unify L matrix orientation
-
-ws_pml_ga(w0, niter) = gradientascent(pml, w0, niter, h, GynC.projectsimplex)
+# weights after `niter` pen.-max.-likelihood gradient-ascent steps
+function ws_pml_ga(w0, niter, h=1)
+    gradientascent(pml, w0, niter, h, GynC.projectsimplex)
+end
