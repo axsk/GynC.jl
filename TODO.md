@@ -19,3 +19,17 @@
 - data
 -- [ ] check units
 -- [ ] y0 vs y0_m16 (!)
+
+
+04.10.16
+
+- federn
+-- test posterior estimation
+
+- plots
+-- trajectory plots of pi0, pi* = argmax L, pi** = argmax L+h
+--- plot quantile ribbons
+-- kde of marginals for above
+
+- pmle 
+-- gradientascent not working?

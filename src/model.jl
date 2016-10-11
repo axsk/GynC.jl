@@ -152,6 +152,7 @@ function llh(c::Config, x::Vector, periods::Int=2)
   l
 end
 
+# NOTE: if feed with NaNs only, returns 0, i.e. p=1
 function llh_measerror(error::Matrix)
   scaled = error ./ model_measerrors'
   nonnan = !isnan(scaled)
