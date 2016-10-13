@@ -68,7 +68,7 @@ function entropy(weights, density)
   h = 0.
   for i in eachindex(weights)
     density[i] == 0 && continue
-    h += weights[i] * log(density[i])
+    h += weights[i] * log(density[i]) ### ISNT THIS WRONG? should be density * weights
   end
   -h
 end

@@ -12,6 +12,7 @@ logLw(w, Ld) = sum(log(Ld * w))
 
 # z-entropy
 function Hz(w::Vector, Lz::Matrix)
+  @assert size(Lz, 1) == length(w)
   rhoz = Lz * w           # \Int L(z|x) * pi(x) dx_j
   rhoz = rhoz / sum(rhoz) # \Int rhoz(z) dz = 1
   #-dot(log(rhoz), w)      # -\Int log(rhoz(z)) * rhoz(z) dz
