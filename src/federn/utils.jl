@@ -8,7 +8,7 @@ function gradify(f, x)
     end
 end
 
-function gradientascent(f, w0, n, h, projection=projectsimplex)
+function gradientascent(f, w0, n, h, projection=GynC.projectsimplex)
     df = gradify(f, w0)
     iter(w) = movefromboundary(w, projection(w + h * df(w)[2]))
     collect(take(iterate(iter, w0), n))
