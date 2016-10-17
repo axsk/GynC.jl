@@ -8,17 +8,19 @@ end
 penalized_llh(w, Ld, Lz) = logLw(w, Ld) + Hz(w, Lz)
 
 # marginal likelihood for w
-logLw(w, Ld) = sum(log(Ld * w))
+logLw(wx, Ldx) = sum(log(Ldx * wx))
 
 # z-entropy
-function Hz(w::Vector, Lz::Matrix)
-  @assert size(Lz, 1) == length(w)
-  rhoz = Lz * w           # \Int L(z|x) * pi(x) dx_j
-  rhoz = rhoz / sum(rhoz) # \Int rhoz(z) dz = 1
-  #-dot(log(rhoz), w)      # -\Int log(rhoz(z)) * rhoz(z) dz
+function Hz(wx::Vector, Lzx::Matrix, wz::Vector=wx)
+  @assert size(Lzx, 1) == length(wz)
+  @assert size(Lzx, 2) == length(wx)
+
+  rhoz = Lzx * wx           # \Int L(z|x) * pi(x) dx_j
+  rhoz = rhoz/sum(rhoz)
   l = 0
-  for (r,w) in zip(rhoz, w)
-    l -= (r == 0 ? 0 : log(r)*w)
+  for (r,w) in zip(rhoz, wz)
+    r == 0 && continue
+    l -= log(r)*w
   end
   l
 end
