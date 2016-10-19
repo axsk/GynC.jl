@@ -37,13 +37,15 @@ include("gync/plot.jl")
 
 # Federn
 
+export Federn
 include("federn/federn.jl")
 
 
 # EMPIRICIAL BAYES
 
 export emiteration!, euler_A!, euler_phih!
-export hzobj
+export gradientascent
+export Hz, logLw, HKL
 
 include("eb/projectsimplex.jl")
 include("eb/weightedsampling.jl")

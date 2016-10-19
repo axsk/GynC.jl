@@ -5,6 +5,7 @@
   L = [pdf(N, z-y) for z in zs, y in ys]
 end
 
+
 ### marginal likelihood for w
 
 logLw(wx, Ldx) = sum(log(Ldx * wx))
@@ -49,7 +50,7 @@ function HKL(w, L, wz=w)
       h += wz[l] * L[l, k] * w[k] / evidences[l] * log( L[l,k] / evidences[l])
     end
   end
-  h / size(Lzz, 1) / size(Lzz, 2)
+  h / size(L, 1) / size(L, 2)
 end
 
 
@@ -63,4 +64,3 @@ phi(x::Matrix) = pmap(phi, [x[i,:] for i in 1:size(x, 1)]) |> Vector{Matrix{Floa
 
 zt(zs::Vector) = map(z->z+rand(rho_e, hz_simdays)', zs)
 
-Lzz(a, b) = [exp(llh_measerror(zi - zj)) for zi in a, zj in b]
