@@ -52,6 +52,8 @@ include("eb/em.jl")
 
 using Memoize
 include("eb/regularizers.jl")
+using Iterators
+include("eb/gradientascent.jl")
 
 import ForwardDiff # to compute derivative of objective
 using Requires

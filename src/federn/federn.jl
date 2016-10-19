@@ -1,10 +1,7 @@
+module Federn
 
-module Feder
-import Distributions
-
+using Distributions
 include("odes.jl")
-
-const rhoe = Distributions.MvNormal(2,5)
 
 phi = odeohnetreatment
 
@@ -42,6 +39,10 @@ function federexperiment(;
     xs, ys, datas, zs
 end
 
-
+function wbeta(xs,xmax) 
+    beta(x) =  (x/xmax).*(1-x/xmax).^3.*(x/xmax.>0).*(x/xmax.<1)*20/xmax
+    w = beta.(xs)
+    w = w / sum(w)
+end
 
 end

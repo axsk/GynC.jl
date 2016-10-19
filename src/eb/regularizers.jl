@@ -1,44 +1,26 @@
-# compute the integral \int p(z|pi) D_KL(pi(x), p(x|pi)) dz
-# L[l,k] = L(zl | xk), zl = phi(xk)+el
-function HKL(w, L, wz=w)
-  #@assert length(w) == size(Ldz, 2)
-  evidences = L * w
-  h = 0.
-  for k = 1:size(L, 2)
-    for l = 1:size(L, 1)
-      h += wz[l] * L[l, k] * w[k] / evidences[l] * log( L[l,k] / evidences[l])
-    end
-  end
-  h / size(Lzz, 1) / size(Lzz, 2)
-end
-
-function hzobj(samples::Matrix{Float64}, datas::Vector{Matrix{Float64}})
-  zs = phi(samples)
-  Ld = Lzz(datas, zs)     # L(d|z)
-  Lz = Lzz(zt(zs), zs)    # L(zt|z), zt=z+e
-  w -> penalized_llh(w, Ld, Lz)
-end
-
-penalized_llh(w, Ld, Lz) = logLw(w, Ld) + Hz(w, Lz)
-
-# marginal likelihood for w
-logLw(wx, Ldx) = sum(log(Ldx * wx))
-
-logLw(w, xs, datas, rho_std) = logLw(w, likelihoodmat(datas, xs, rho_std))
-
+# compute the likelihoods of measuring zs given ys, return the cached matrix
 @memoize function likelihoodmat(zs, ys, rho_std)
+  info("computing likelihood matrix")
   N = MvNormal(2, rho_std)
   L = [pdf(N, z-y) for z in zs, y in ys]
 end
 
+### marginal likelihood for w
+
+logLw(wx, Ldx) = sum(log(Ldx * wx))
+
+logLw(w, xs, datas, rho_std) = logLw(w, likelihoodmat(datas, xs, rho_std))
+
+
+### z-Entropy for w
+
 function Hz(w::Vector, ys::Vector, zs::Vector, rho_std::Real)
   L = likelihoodmat(zs, ys, rho_std)
-  wz = repmat(w, Int(length(zs) / length(ys)))
+  zmult = Int(length(zs) / length(ys))
+  wz = repmat(w, Int(length(zs) / length(ys))) / zmult
   Hz(w, L, wz)
 end
 
-
-# z-entropy
 function Hz(wx::Vector, Lzx::Matrix, wz::Vector=wx)
   @assert size(Lzx, 1) == length(wz)
   @assert size(Lzx, 2) == length(wx)
@@ -53,7 +35,25 @@ function Hz(wx::Vector, Lzx::Matrix, wz::Vector=wx)
   l
 end
 
-###
+
+### hkl
+
+# compute the integral \int p(z|pi) D_KL(pi(x), p(x|pi)) dz
+# L[l,k] = L(zl | xk), zl = phi(xk)+el
+function HKL(w, L, wz=w)
+  #@assert length(w) == size(Ldz, 2)
+  evidences = L * w
+  h = 0.
+  for k = 1:size(L, 2)
+    for l = 1:size(L, 1)
+      h += wz[l] * L[l, k] * w[k] / evidences[l] * log( L[l,k] / evidences[l])
+    end
+  end
+  h / size(Lzz, 1) / size(Lzz, 2)
+end
+
+
+# old gync compability layer
 
 const hz_simdays = 31
 const rho_e = MvNormal(model_measerrors)
