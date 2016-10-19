@@ -16,28 +16,28 @@ export plotsolutions, plotdata
 export WeightedChain
 
 import DataFrames
-include("GynC/data/lausanne.jl")
-include("GynC/data/pfizer.jl")
+include("gync/data/lausanne.jl")
+include("gync/data/pfizer.jl")
 
 using Distributions
 import Sundials
-include("GynC/gyncycle.jl")
-include("GynC/model.jl")
+include("gync/gyncycle.jl")
+include("gync/model.jl")
 
 import Mamba
-include("GynC/sampling.jl")
+include("gync/sampling.jl")
 
 import JLD, HDF5
-include("GynC/utils.jl")
-include("GynC/batch.jl")
+include("gync/utils.jl")
+include("gync/batch.jl")
 
-include("GynC/weightedchain.jl")
-include("GynC/plot.jl")
+include("gync/weightedchain.jl")
+include("gync/plot.jl")
 
 
 # Federn
 
-include("Federn/federn.jl")
+include("federn/federn.jl")
 
 
 # EMPIRICIAL BAYES
@@ -45,17 +45,17 @@ include("Federn/federn.jl")
 export emiteration!, euler_A!, euler_phih!
 export hzobj
 
-include("EB/projectsimplex.jl")
-include("EB/weightedsampling.jl")
+include("eb/projectsimplex.jl")
+include("eb/weightedsampling.jl")
 
-include("EB/em.jl")
+include("eb/em.jl")
 
 using Memoize
-include("EB/regularizers.jl")
+include("eb/regularizers.jl")
 
 import ForwardDiff # to compute derivative of objective
 using Requires
-@require NLopt include("EB/optim.jl")
+@require NLopt include("eb/optim.jl")
 
 
 end
