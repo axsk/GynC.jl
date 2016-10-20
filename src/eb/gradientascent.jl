@@ -1,4 +1,8 @@
-using ForwardDiff
+function gradientascent(f, w0, n, h, projection=GynC.projectsimplex)
+    df = gradify(f, w0)
+    iter(w) = movefromboundary(w, projection(w + h * df(w)[2]))
+    collect(take(iterate(iter, w0), n))
+end
 
 function gradify(f, x)
     out = GradientResult(x)
@@ -6,12 +10,6 @@ function gradify(f, x)
         ForwardDiff.gradient!(out, f, x)
         ForwardDiff.value(out), ForwardDiff.gradient(out)
     end
-end
-
-function gradientascent(f, w0, n, h, projection=GynC.projectsimplex)
-    df = gradify(f, w0)
-    iter(w) = movefromboundary(w, projection(w + h * df(w)[2]))
-    collect(take(iterate(iter, w0), n))
 end
 
 " given two points on the simplex `wold` and `wnew`,

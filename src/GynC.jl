@@ -55,9 +55,9 @@ include("eb/em.jl")
 using Memoize
 include("eb/regularizers.jl")
 using Iterators
+using ForwardDiff
 include("eb/gradientascent.jl")
 
-import ForwardDiff # to compute derivative of objective
 using Requires
 @require NLopt include("eb/optim.jl")
 

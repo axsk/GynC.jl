@@ -18,7 +18,7 @@ logLw(w, xs, datas, rho_std) = logLw(w, likelihoodmat(datas, xs, rho_std))
 function Hz(w::Vector, ys::Vector, zs::Vector, rho_std::Real)
   L = likelihoodmat(zs, ys, rho_std)
   zmult = Int(length(zs) / length(ys))
-  wz = repmat(w, Int(length(zs) / length(ys))) / zmult
+  wz = repmat(w, zmult) / zmult
   Hz(w, L, wz)
 end
 
