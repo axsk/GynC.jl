@@ -27,7 +27,6 @@ function Hz(wx::Vector, Lzx::Matrix, wz::Vector=wx)
   @assert size(Lzx, 2) == length(wx)
 
   rhoz = Lzx * wx           # \Int L(z|x) * pi(x) dx_j
-  rhoz = rhoz/sum(rhoz)
   l = 0
   for (r,w) in zip(rhoz, wz)
     r == 0 && continue
