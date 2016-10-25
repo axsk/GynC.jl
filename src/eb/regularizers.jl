@@ -8,10 +8,14 @@ end
 
 ### marginal likelihood for w
 
-logLw(wx, Ldx) = sum(log(Ldx * wx))
-
 logLw(w, xs, datas, rho_std) = logLw(w, likelihoodmat(datas, xs, rho_std))
 
+logLw(wx, Ldx) = sum(log(Ldx * wx))
+
+function dlogl(w, datas, ys, rho_std)
+  L = likelihoodmat(datas, ys, rho_std)
+  sum(L./(L*w), 1) |> vec
+end
 
 ### z-Entropy for w
 
@@ -33,6 +37,18 @@ function Hz(wx::Vector, Lzx::Matrix, wz::Vector=wx)
     l -= log(r)*w
   end
   l
+end
+
+function Dhz(w, ys, zs, rho)
+  L = likelihoodmat(zs,ys,rho)
+
+  zmult = Int(length(zs) / length(ys))
+  wz = repmat(w, zmult) / zmult
+
+  rhoz = L*w
+
+  #d_j Hz(w) = \int p(z|xk) / p(z|w) * p(z|w) * log(p(z|w)) dz
+  d = -(sum(wz .* log(rhoz) ./ rhoz .* L, 1) + 1) |> vec
 end
 
 

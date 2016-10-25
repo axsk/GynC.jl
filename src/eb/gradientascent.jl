@@ -1,6 +1,6 @@
-function gradientascent(f, w0, n, h, projection=GynC.projectsimplex)
-    df = gradify(f, w0)
-    iter(w) = movefromboundary(w, projection(w + h * df(w)[2]))
+function gradientascent(f, w0, n, h, projection=GynC.projectsimplex; autodiff=true)
+    df = autodiff ? gradify(f, w0) : f
+    iter(w) = movefromboundary(w, projection(w + h * df(w)))
     collect(take(iterate(iter, w0), n))
 end
 
@@ -8,7 +8,8 @@ function gradify(f, x)
     out = GradientResult(x)
     function df(x)
         ForwardDiff.gradient!(out, f, x)
-        ForwardDiff.value(out), ForwardDiff.gradient(out)
+        #ForwardDiff.value(out)
+        ForwardDiff.gradient(out)
     end
 end
 
