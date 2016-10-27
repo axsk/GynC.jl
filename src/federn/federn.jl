@@ -5,9 +5,12 @@ include("odes.jl")
 
 phi = odeohnetreatment
 
-perturb(y, rho_std) = y + rand(MvNormal(2, rho_std))
+const prior = MixtureModel([Normal(15, 15*.15), Normal(30, 30*.15)])
 
-function generatepriordata(n, rho_std)
+p_measerror(rho_std) = MvNormal(2, rho_std)
+perturb(y, rho_std) = y + rand(p_measerror(rho_std))
+
+#=function generatepriordata(n, rho_std)
     k1 = 15
     k2 = 30
     s1 = 0.15*k1
@@ -18,6 +21,11 @@ function generatepriordata(n, rho_std)
 
     xs = [x1; x2]
     zs = perturb.(phi.(xs), rho_std)
+end=#
+
+function generatepriordata(n, rho_std)
+    xs = rand(prior, n)
+    zs = map(x->perturb(phi(x), rho_std), xs)
 end
 
 

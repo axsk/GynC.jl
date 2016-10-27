@@ -19,14 +19,17 @@ end
 
 ### z-Entropy for w
 
-function Hz(w::Vector, ys::Vector, zs::Vector, rho_std::Real)
+function hz(w::Vector, ys::Vector, zs::Vector, rho_std::Real)
   L = likelihoodmat(zs, ys, rho_std)
   zmult = Int(length(zs) / length(ys))
   wz = repmat(w, zmult) / zmult
-  Hz(w, L, wz)
+  hz(w, L, wz)
 end
 
-function Hz(wx::Vector, Lzx::Matrix, wz::Vector=wx)
+# hz(w) = \int p(z|w) log(p(z|w)) dz
+# with (z,wz) ~ p(z|w) importance sampling
+
+function hz(wx::Vector, Lzx::Matrix, wz::Vector=wx)
   @assert size(Lzx, 1) == length(wz)
   @assert size(Lzx, 2) == length(wx)
 
@@ -39,16 +42,64 @@ function Hz(wx::Vector, Lzx::Matrix, wz::Vector=wx)
   l
 end
 
-function Dhz(w, ys, zs, rho)
-  L = likelihoodmat(zs,ys,rho)
-
-  zmult = Int(length(zs) / length(ys))
+function repeatweights(w, zs)
+  zmult = Int(length(zs) / length(w))
   wz = repmat(w, zmult) / zmult
+end
 
+function dhz(w, ys, zs, rho)
+  L = likelihoodmat(zs,ys,rho)
+  wz = repeatweights(w,zs)
+
+  dhzloop2(L,w,wz)
+end
+
+# d/dw_k hz(w) = - \int p(z|w) / p(z|w) * p(z|x) * log(p(z|w)) dz - 1
+# using (z,wz) ~ p(z|w) importance sampling / monte carlo integration
+
+function dhzmatrix(L,w,wz)
   rhoz = L*w
-
-  #d_j Hz(w) = \int p(z|xk) / p(z|w) * p(z|w) * log(p(z|w)) dz
   d = -(sum(wz .* log(rhoz) ./ rhoz .* L, 1) + 1) |> vec
+end
+
+function dhzloop(L,w,wz)
+  rhoz = L*w
+  d = zeros(w)
+
+  @inbounds for x in 1:length(w)
+    for z in 1:length(wz)
+      d[x] -= L[z,x] / rhoz[z] * wz[z] * log(rhoz[z])
+    end
+  end
+  d-1
+end
+
+function dhzloop2(L,w,wz)
+  rhoz = L*w
+  d = fill!(similar(w), -1.0)
+
+  @inbounds for z in 1:length(wz)
+    fact = wz[z] * log(rhoz[z]) / rhoz[z]
+    @simd for x in 1:length(w)
+      d[x] -= fact * L[z,x]
+    end
+  end
+  d
+end
+
+
+function dhztest(n=1000,m=n)
+  L  = rand(n,m)
+  wz = rand(n)
+  w  = rand(m)
+  g = GynC.gradify(w->GynC.Hz(w, L, wz),w)
+  @time c=dhzloop2(L,w,wz)
+  @time a=dhzloop(L,w,wz)
+  @time b=dhz(L,w,wz)
+  @time d=g(w)
+  Base.Test.@test_approx_eq a b
+  Base.Test.@test_approx_eq a c
+  Base.Test.@test_approx_eq a d
 end
 
 
