@@ -1,3 +1,37 @@
+type LikelihoodModel
+  xs::Vector
+  ys::Vector
+  zs::Vector
+  datas::Vector
+  measerr::Distribution
+end
+
+function federmodel(nx, ndata, zmult, rho_std)
+  xs, ys, datas, zs = GynC.Federn.federexperiment(nx=nx, ndata=ndata, zmult=zmult, rho_std=rho_std)
+  LikelihoodModel(xs, ys, zs, datas, MvNormal(2, rho_std))
+end
+
+function mple(m::LikelihoodModel, w0, niter, reg, h)
+  c1 = 1/100
+  c2 = 1/1000
+  ndata = length(m.datas)
+  hauto = h/((1-reg)*(ndata/c1) + reg/c2)
+  gradientascent(mple_obj(m, reg), w0, niter, hauto, autodiff=false)
+end
+
+function mple_obj(m::LikelihoodModel, reg)
+  w -> reg*dhz(w, m.ys, m.zs, m.measerr) + (1-reg) * dlogl(w, m.datas, m.ys, m.measerr)
+end
+
+function em(m::LikelihoodModel, w0, niter)
+  L = likelihoodmat(m.ys, m.datas, m.measerr)
+  emiterations(w0, L, niter)
+end
+
+hz(m::LikelihoodModel, w) = hz(w, m.ys, m.zs, m.measerr)
+logl(m::LikelihoodModel, w) = logLw(w, m.xs, m.datas, m.measerr)
+
+
 # compute the likelihoods of measuring zs given ys, return the cached matrix
 @deprecate likelihoodmat(zs, ys, rho_std) likelihoodmat(zs, ys, MvNormal(2, rho_std))
 
@@ -20,7 +54,7 @@ end
 
 ### z-Entropy for w
 
-function hz(w::Vector, ys::Vector, zs::Vector, rho_std::Real)
+function hz(w::Vector, ys::Vector, zs::Vector, rho_std)
   L = likelihoodmat(zs, ys, rho_std)
   zmult = Int(length(zs) / length(ys))
   wz = repmat(w, zmult) / zmult
