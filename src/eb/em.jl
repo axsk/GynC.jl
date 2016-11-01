@@ -1,5 +1,9 @@
 ### wrappers ###
 
+using Iterators
+
+emiterations(w0, L, niter) = collect(take(iterate(w->emiteration(w,L), w0), niter))
+
 emiteration!(c::WeightedChain) = (emiteration!(c.weights, c.likelihoods); c)
 euler_A!(c::WeightedChain, h::Real) = (c.weights = euler_A(c.weights, c.likelihoods, h); c)
 euler_phih!(c::WeightedChain, h) = (c.weights = euler_phih(c.weights, density(c), c.likelihoods, h); c)
