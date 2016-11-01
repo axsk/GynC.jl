@@ -36,8 +36,20 @@ logl(m::LikelihoodModel, w) = logLw(w, m.xs, m.datas, m.measerr)
 @deprecate likelihoodmat(zs, ys, rho_std) likelihoodmat(zs, ys, MvNormal(2, rho_std))
 
 @memoize function likelihoodmat(zs, ys, merr::Distribution)
-  info("computing likelihood matrix")
-  L = [pdf(merr, z-y) for z in zs, y in ys]
+  info("computing likelihood matrix ($(length(zs))x$(length(ys)))")
+  #@time L = [pdf(merr, z-y) for z in zs, y in ys]
+  likelihoodmat_par(zs,ys,merr)
+end
+
+# parallelize over columns
+function likelihoodmat_par(zs, ys, merr::Distribution)
+  x = SharedArray(Float64, (length(zs), length(ys)))
+  @sync @parallel for j = 1:length(ys)
+    for i = 1:length(zs)
+      @inbounds x[i,j] = pdf(merr, zs[i]-ys[j])
+    end
+  end
+  Array(x)
 end
 
 
