@@ -26,7 +26,7 @@ function em(m::LikelihoodModel, w0, niter)
 end
 
 hz(m::LikelihoodModel, w) = hz(w, m.ys, m.zs, m.measerr)
-logl(m::LikelihoodModel, w) = logLw(w, m.xs, m.datas, m.measerr)
+logl(m::LikelihoodModel, w) = logLw(w, m.ys, m.datas, m.measerr)
 
 
 ### internal calculations
@@ -55,7 +55,7 @@ end
 
 ### marginal likelihood for w
 
-logLw(w, xs, datas, rho_std) = logLw(w, likelihoodmat(datas, xs, rho_std))
+logLw(w, ys, datas, rho_std) = logLw(w, likelihoodmat(datas, ys, rho_std))
 
 logLw(wx, Ldx) = sum(log(Ldx * wx))
 
