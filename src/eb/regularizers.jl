@@ -1,8 +1,9 @@
 # compute the likelihoods of measuring zs given ys, return the cached matrix
-@memoize function likelihoodmat(zs, ys, rho_std)
+@deprecate likelihoodmat(zs, ys, rho_std) likelihoodmat(zs, ys, MvNormal(2, rho_std))
+
+@memoize function likelihoodmat(zs, ys, merr::Distribution)
   info("computing likelihood matrix")
-  N = MvNormal(2, rho_std)
-  L = [pdf(N, z-y) for z in zs, y in ys]
+  L = [pdf(merr, z-y) for z in zs, y in ys]
 end
 
 
@@ -57,6 +58,8 @@ end
 # d/dw_k hz(w) = - \int p(z|w) / p(z|w) * p(z|x) * log(p(z|w)) dz - 1
 # using (z,wz) ~ p(z|w) importance sampling / monte carlo integration
 
+# note: we could also sample p(z|x) (normally distr.) directly and eval log(p(z|w)) which should require less iterations => faster for large w, wz
+
 function dhzmatrix(L,w,wz)
   rhoz = L*w
   d = -(sum(wz .* log(rhoz) ./ rhoz .* L, 1) + 1) |> vec
@@ -87,15 +90,14 @@ function dhzloop2(L,w,wz)
   d
 end
 
-
 function dhztest(n=1000,m=n)
   L  = rand(n,m)
   wz = rand(n)
   w  = rand(m)
-  g = GynC.gradify(w->GynC.Hz(w, L, wz),w)
+  g = GynC.gradify(w->GynC.hz(w, L, wz),w)
+  @time a=dhzmatrix(L,w,wz)
+  @time b=dhzloop(L,w,wz)
   @time c=dhzloop2(L,w,wz)
-  @time a=dhzloop(L,w,wz)
-  @time b=dhz(L,w,wz)
   @time d=g(w)
   Base.Test.@test_approx_eq a b
   Base.Test.@test_approx_eq a c
@@ -129,4 +131,3 @@ phi(x::Vector{Float64}) = forwardsol(x, 0:hz_simdays-1)[:, measuredinds] :: Matr
 phi(x::Matrix) = pmap(phi, [x[i,:] for i in 1:size(x, 1)]) |> Vector{Matrix{Float64}}
 
 zt(zs::Vector) = map(z->z+rand(rho_e, hz_simdays)', zs)
-
