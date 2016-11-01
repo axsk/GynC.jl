@@ -1,14 +1,11 @@
+###  high-level api
+
 type LikelihoodModel
   xs::Vector
   ys::Vector
   zs::Vector
   datas::Vector
   measerr::Distribution
-end
-
-function federmodel(nx, ndata, zmult, rho_std)
-  xs, ys, datas, zs = GynC.Federn.federexperiment(nx=nx, ndata=ndata, zmult=zmult, rho_std=rho_std)
-  LikelihoodModel(xs, ys, zs, datas, MvNormal(2, rho_std))
 end
 
 function mple(m::LikelihoodModel, w0, niter, reg, h)
@@ -30,6 +27,9 @@ end
 
 hz(m::LikelihoodModel, w) = hz(w, m.ys, m.zs, m.measerr)
 logl(m::LikelihoodModel, w) = logLw(w, m.xs, m.datas, m.measerr)
+
+
+### internal calculations
 
 
 # compute the likelihoods of measuring zs given ys, return the cached matrix

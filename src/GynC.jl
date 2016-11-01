@@ -35,10 +35,6 @@ include("gync/weightedchain.jl")
 include("gync/plot.jl")
 
 
-# Federn
-
-export Federn
-include("federn/federn.jl")
 
 
 # EMPIRICIAL BAYES
@@ -61,5 +57,9 @@ include("eb/gradientascent.jl")
 using Requires
 @require NLopt include("eb/optim.jl")
 
+# Federn
+
+export Federn
+include("federn/federn.jl")
 
 end

@@ -53,4 +53,15 @@ function wbeta(xs,xmax)
     w = w / sum(w)
 end
 
+using GynC: LikelihoodModel
+
+function federmodel(nx, ndata, zmult, rho_std)
+  xs, ys, datas, zs = federexperiment(nx=nx, ndata=ndata, zmult=zmult, rho_std=rho_std)
+  LikelihoodModel(xs, ys, zs, datas, MvNormal(2, rho_std))
+end
+
+function betaprior(m::LikelihoodModel)
+    wbeta(m.xs, maximum(m.xs)*1.000001) # to circumvent 0 weight destroying gradientascent boundary detection
+end
+
 end
