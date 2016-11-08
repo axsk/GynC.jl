@@ -25,6 +25,9 @@ include("gync/gyncycle.jl")
 include("gync/model.jl")
 
 import Mamba
+
+import StatsBase: sample,sample! # strange fix, needed?
+
 include("gync/sampling.jl")
 
 import JLD, HDF5

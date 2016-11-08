@@ -6,6 +6,17 @@ type LikelihoodModel
   zs::Vector
   datas::Vector
   measerr::Distribution
+  zsampledistr::Distribution # used in hz (hy)
+end
+
+function LikelihoodModel(xs,ys,zs,datas,measerr)
+  LikelihoodModel(xs,ys,zs,datas,measerr,measerr)
+end
+
+
+function em(m::LikelihoodModel, w0, niter)
+  L = likelihoodmat(m.ys, m.datas, m.measerr)
+  emiterations(w0, L, niter)
 end
 
 function mple(m::LikelihoodModel, w0, niter, reg, h)
@@ -13,40 +24,45 @@ function mple(m::LikelihoodModel, w0, niter, reg, h)
   c2 = 1/1000
   ndata = length(m.datas)
   hauto = h/((1-reg)*(ndata/c1) + reg/c2)
-  gradientascent(mple_obj(m, reg), w0, niter, hauto, autodiff=false)
+  gradientascent(dmple_obj(m, reg), w0, niter, hauto, autodiff=false)
 end
 
-function mple_obj(m::LikelihoodModel, reg)
-  w -> reg*dhz(w, m.ys, m.zs, m.measerr) + (1-reg) * dlogl(w, m.datas, m.ys, m.measerr)
+function dmple_obj(m::LikelihoodModel, reg)
+  if reg == 0
+    w -> dlogl(m, w)
+  elseif reg == 1
+    w -> dhz(m,w)
+  else
+    w -> reg*dhz(m, w) + (1-reg) * dlogl(m, w)
+  end
 end
 
-function em(m::LikelihoodModel, w0, niter)
-  L = likelihoodmat(m.ys, m.datas, m.measerr)
-  emiterations(w0, L, niter)
-end
 
-hz(m::LikelihoodModel, w) = hz(w, m.ys, m.zs, m.measerr)
-logl(m::LikelihoodModel, w) = logLw(w, m.ys, m.datas, m.measerr)
+hz(m::LikelihoodModel,  w) = hz(w,  m.ys, m.zs, m.zsampledistr)
+dhz(m::LikelihoodModel, w) = dhz(w, m.ys, m.zs, m.zsampledistr)
+
+logl(m::LikelihoodModel,  w) = logl(w,  m.datas, m.ys, m.measerr)
+dlogl(m::LikelihoodModel, w) = dlogl(w, m.datas, m.ys, m.measerr) # correct order
 
 
-### internal calculations
 
+### likelihood matrix compilation
 
 # compute the likelihoods of measuring zs given ys, return the cached matrix
 @deprecate likelihoodmat(zs, ys, rho_std) likelihoodmat(zs, ys, MvNormal(2, rho_std))
 
-@memoize function likelihoodmat(zs, ys, merr::Distribution)
+@memoize Dict function likelihoodmat(zs, ys, d::Distribution)
   info("computing likelihood matrix ($(length(zs))x$(length(ys)))")
-  #@time L = [pdf(merr, z-y) for z in zs, y in ys]
-  likelihoodmat_par(zs,ys,merr)
+  #@time L = [pdf(d, z-y) for z in zs, y in ys]
+  likelihoodmat_par(zs,ys,d)
 end
 
 # parallelize over columns
-function likelihoodmat_par(zs, ys, merr::Distribution)
+function likelihoodmat_par(zs, ys, d::Distribution)
   x = SharedArray(Float64, (length(zs), length(ys)))
   @sync @parallel for j = 1:length(ys)
     for i = 1:length(zs)
-      @inbounds x[i,j] = pdf(merr, zs[i]-ys[j])
+      @inbounds x[i,j] = pdf(d, zs[i]-ys[j])
     end
   end
   Array(x)
@@ -55,26 +71,32 @@ end
 
 ### marginal likelihood for w
 
-logLw(w, ys, datas, rho_std) = logLw(w, likelihoodmat(datas, ys, rho_std))
+logl(w, datas, ys, rho_std) = logl(w, likelihoodmat(datas, ys, rho_std))
 
-logLw(wx, Ldx) = sum(log(Ldx * wx))
+logl(wx, Ldx) = sum(log(Ldx * wx))
 
 function dlogl(w, datas, ys, rho_std)
   L = likelihoodmat(datas, ys, rho_std)
   sum(L./(L*w), 1) |> vec
 end
 
+
 ### z-Entropy for w
 
-function hz(w::Vector, ys::Vector, zs::Vector, rho_std)
-  L = likelihoodmat(zs, ys, rho_std)
-  zmult = Int(length(zs) / length(ys))
+# repeat the weights w to match length of zs, used for multiple z samples per y sample
+function repeatweights(w, zs)
+  zmult = Int(length(zs) / length(w))
   wz = repmat(w, zmult) / zmult
-  hz(w, L, wz)
 end
 
 # hz(w) = \int p(z|w) log(p(z|w)) dz
 # with (z,wz) ~ p(z|w) importance sampling
+
+function hz(w::Vector, ys::Vector, zs::Vector, rho_std)
+  L = likelihoodmat(zs, ys, rho_std)
+  wz = repeatweights(w, zs)
+  hz(w, L, wz)
+end
 
 function hz(wx::Vector, Lzx::Matrix, wz::Vector=wx)
   @assert size(Lzx, 1) == length(wz)
@@ -87,11 +109,6 @@ function hz(wx::Vector, Lzx::Matrix, wz::Vector=wx)
     l -= log(r)*w
   end
   l
-end
-
-function repeatweights(w, zs)
-  zmult = Int(length(zs) / length(w))
-  wz = repmat(w, zmult) / zmult
 end
 
 function dhz(w, ys, zs, rho)
@@ -149,6 +166,7 @@ function dhztest(n=1000,m=n)
   Base.Test.@test_approx_eq a c
   Base.Test.@test_approx_eq a d
 end
+
 
 
 ### hkl

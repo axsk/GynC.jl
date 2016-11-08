@@ -1,4 +1,4 @@
-function gradientascent(f, w0, n, h, projection=GynC.projectsimplex; autodiff=true)
+function gradientascent(f::Function, w0::Vector, n::Integer, h::Real, projection::Function=GynC.projectsimplex; autodiff::Bool=true)
     df = autodiff ? gradify(f, w0) : f
     iter(w) = movefromboundary(w, projection(w + h * df(w)))
     collect(take(iterate(iter, w0), n))
