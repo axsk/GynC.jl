@@ -51,6 +51,8 @@ include("eb/weightedsampling.jl")
 
 include("eb/em.jl")
 
+include("eb/likelihoodmodel.jl")
+
 using Memoize
 include("eb/regularizers.jl")
 using Iterators

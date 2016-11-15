@@ -23,6 +23,7 @@ euler_phih!(c::WeightedChain, h) = (c.weights = euler_phih(c.weights, density(c)
 emiteration(w, L) = emiteration!(copy(w), L)
 
 @deprecate reweight!(w, L) emiteration!(w, L)
+
 function emiteration!(w::DenseVector, L::DenseMatrix)
   K = size(L,1)
   M = size(L,2)
