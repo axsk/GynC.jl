@@ -31,7 +31,7 @@ function emiteration!(w::DenseVector, L::DenseMatrix)
 
   @inbounds for k=1:K
     s = 0.
-    @simd for m=1:M
+    for m=1:M
       s += L[k,m] / norms[m]
     end
     w[k] = w[k] / M * s

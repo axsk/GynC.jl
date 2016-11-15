@@ -3,33 +3,49 @@ using ODE: ode45
 function odeohnetreatment(k::Real)
     m = 0.7
     f(t,z)   = [z[2], -k/m*z[1]]
-    y0       = [10, 0.]
+    y0       = [-10, 0.]
     tspan    = [0, 1, 1.7]
     t,z      = ode45(f, y0, tspan, points=:specified)
     # return 2nd component at time 1 and 1.7
     [z[2][1], z[3][1]]
 end
 
-## below are iljas vectorized versions
+function odemittreatment(k::Real)
+    m = 0.7
 
+    s = 0.02
+    g(t,c) = 400*exp(-(t-c).^2/s^2)
 
-# given a vector of parameters, return the matrix of resulting spring positions at t=1 and t=1.7 in each row
-function ODEohneTreatment(K::Vector)
-    m = 0.7;
-    h = zeros(length(K),2);
+    c1 = 2.2;
+    c2 = 2.97;
+    c3 = 4.18;
+    c4 = 4.95;
+    c5 = 6.95;
+    c6 = 7.75;
+    treat(t) = g(t,c1) + g(t,c2) + g(t,c3) + g(t,c4) + g(t,c5) + g(t,c6);
 
-    for ind = 1:length(K)
-        k        = K[ind]
-        f(t,z)   = [z[2], -k/m*z[1]]
-        y0       = [10, 0.]
-        tspan    = [0, 1, 1.7]
-        T,A      = ode45(f, y0, tspan, points=:specified)
-        h[ind,:] = map(z->z[2], A[2:3])'
-    end
-    h::Matrix
+    f(t,z) = [z[2], -k/m*z[1] + treat(t)]
+
+    y0 = [-10,0.]
+    tspan = linspace(0,10,400)
+
+    t,y = ode45(f, y0, tspan, points=:specified)
 end
 
+function maxamplitude(k)
+    t,y = odemittreatment(k)
+    ys = [y[1] for y in y]
+    maxabs(ys)
+end
 
+r(k) = maxamplitude(k) > 13 ? 1 : 0
+
+
+
+
+#=
+
+ilyas alter code (bereits teilsangepasst)
 
 function ODEmitTreatment3(kList)
     m     = 0.7;
@@ -85,3 +101,5 @@ function ODEmitTreatment3(kList)
 
     Test
 end
+
+=# 
