@@ -8,9 +8,9 @@ function pfizerdata()
   file = joinpath(dirname(@__FILE__), "pfizer_normal.txt")
   data = DataFrames.readtable(file, separator='\t')
   results = Vector()
-  map(groupby(data, 6)) do subject
+  map(DataFrames.groupby(data, 6)) do subject
     p = fill(NaN, 31, 4)
-    for measurement in eachrow(subject)
+    for measurement in DataFrames.eachrow(subject)
       # map days to 1-31
       day = (measurement[1]+30)%31+1
       for i = 1:4
