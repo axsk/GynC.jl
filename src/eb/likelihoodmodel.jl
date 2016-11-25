@@ -25,6 +25,17 @@ function mple(m::LikelihoodModel, w0, niter, reg, h)
   gradientascent(dmple_obj(m, reg), w0, niter, hauto, autodiff=false)
 end
 
+
+function mple_obj(m::LikelihoodModel, reg)
+  if reg == 0
+    w -> logl(m, w)
+  elseif reg == 1
+    w -> hz(m, w)
+  else
+    w -> reg*hz(m,w) + (1-reg) * logl(m,w)
+  end
+end
+
 function dmple_obj(m::LikelihoodModel, reg)
   if reg == 0
     w -> dlogl(m, w)
@@ -34,6 +45,8 @@ function dmple_obj(m::LikelihoodModel, reg)
     w -> reg*dhz(m, w) + (1-reg) * dlogl(m, w)
   end
 end
+
+
 
 
 hz(m::LikelihoodModel,  w) = hz(w,  m.ys, m.zs, m.zsampledistr)
@@ -60,10 +73,19 @@ function smoothdata(m::LikelihoodModel, dmult::Int,
   if isa(m.measerr, Normal)
     smeaserr = Normal(0, sqrt(m.measerr.σ^2 + sigmak^2))
   else
-    warning("could not adjust the likelihoodmodel measurement error")
+    warn("could not adjust the likelihoodmodel measurement error")
     smeaserr = m.measerr
   end
 
   # new model
   LikelihoodModel(m.xs, m.ys, m.zs, sdatas, smeaserr, m.zsampledistr)
+end
+
+function smoothdata(m::LikelihoodModel, dmult::Int, kernel::Distribution)
+  #sdatas = repmat(m.datas, dmult) + rand(kernel, length(m.datas) * dmult)
+  sdatas = map(d->d+rand(kernel), repmat(m.datas, dmult))
+
+  warn("did not adjust the likelihoodmodel meas error")
+
+  LikelihoodModel(m.xs, m.ys, m.zs, sdatas, m.measerr, m.zsampledistr)
 end
