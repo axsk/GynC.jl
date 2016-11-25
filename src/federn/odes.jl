@@ -1,13 +1,16 @@
 using ODE: ode45
 
-function odeohnetreatment(k::Real)
+
+@deprecate odeohnetreatment(k) odesol(k)
+
+function odesol(k::Real, ts::AbstractVector = [1,1.7])
     m = 0.7
     f(t,z)   = [z[2], -k/m*z[1]]
     y0       = [-10, 0.]
-    tspan    = [0, 1, 1.7]
+    tspan    = vcat(0, ts)
     t,z      = ode45(f, y0, tspan, points=:specified)
     # return 2nd component at time 1 and 1.7
-    [z[2][1], z[3][1]]
+    [z[t][1] for t=2:length(z)]
 end
 
 function odemittreatment(k::Real)
@@ -32,13 +35,15 @@ function odemittreatment(k::Real)
     t,y = ode45(f, y0, tspan, points=:specified)
 end
 
-function maxamplitude(k)
+function maxtreatamplitude(k)
     t,y = odemittreatment(k)
     ys = [y[1] for y in y]
     maxabs(ys)
 end
 
-r(k) = maxamplitude(k) > 13 ? 1 : 0
+r(k::Real) = maxtreatamplitude(k) > 13 ? 1 : 0
+
+r(w::Vector) = dot(w, r.(w))
 
 
 

@@ -1,3 +1,5 @@
+using KernelDensity
+
 type LikelihoodModel
   xs::Vector
   ys::Vector

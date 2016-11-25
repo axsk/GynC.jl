@@ -3,7 +3,7 @@ module Federn
 using Distributions
 include("odes.jl")
 
-phi = odeohnetreatment
+phi = odesol
 
 const prior = MixtureModel([Normal(15, 15*.15), Normal(30, 30*.15)])
 
@@ -47,16 +47,16 @@ function federexperiment(;
     xs, ys, datas, zs
 end
 
-function wbeta(xs,xmax) 
+using GynC: LikelihoodModel
+
+function wbeta(xs,xmax=maximum(xs))
     beta(x) =  (x/xmax).*(1-x/xmax).^3.*(x/xmax.>0).*(x/xmax.<1)*20/xmax
     w = beta.(xs)
     w = w / sum(w)
 end
 
-using GynC: LikelihoodModel
-
-function federmodel(nx, ndata, zmult, rho_std)
-  xs, ys, datas, zs = federexperiment(nx=nx, ndata=ndata, zmult=zmult, rho_std=rho_std)
+function federmodel(nx, ndata, zmult, rho_std; kwargs...)
+  xs, ys, datas, zs = federexperiment(nx=nx, ndata=ndata, zmult=zmult, rho_std=rho_std; kwargs...)
   LikelihoodModel(xs, ys, zs, datas, MvNormal(2, rho_std))
 end
 
