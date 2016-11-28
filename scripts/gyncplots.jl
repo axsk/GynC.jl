@@ -1,19 +1,38 @@
 using GynC
+using Memoize
 using JLD
 using KernelDensity
 using Plots
 
+const densspecies = [8, 31, 44, 50, 76]
+
+const patient = 1
+
+const trajspecies = 2
+const trajts = 0:1/4:30
+
+const ylimsdens=(0,0.2)
+const ylimstraj=(0,100)
+
+const postcolor = :cyan
+const KDEBANDWIDTHMULT = 0.2
+
+const mplegamma = 0.95
+
 ### individual plot functions
 
-paperhd() = paperplot(nsamples=500, niter=100, h=5, zmult=50, smoothmult=50)
+paperhd() = paperplot(nsamples=100, niter=300, h=1, zmult=50, smoothmult=50) 
 
-function paperplot(;nsamples = 100, niter=50, h=5, zmult=10, smoothmult=10, patient=1, kwargs...)
+test() = paperplot(nsamples=50, niter=20, h=1, zmult=5, smoothmult=5)
+
+
+function paperplot(;nsamples = 100, niter=50, h=5, zmult=10, smoothmult=10, kwargs...)
   m    = gyncmodel(samplepi1(nsamples), zmult=zmult)
   ms   = smoothedmodel(m, smoothmult)
   muni = gyncmodel(samplepi0(nsamples), zmult=0)
 
   # estimate priors
-  w0 = ones(length(m.xs)) / length(m.xs)
+  w0 = uniformweights(m.xs)
   ws = Dict{String, Vector{Vector{Float64}}}()
 
   println("computing npmle")
@@ -23,7 +42,7 @@ function paperplot(;nsamples = 100, niter=50, h=5, zmult=10, smoothmult=10, pati
   @time ws["DS-MLE"] = GynC.em(ms, w0, niter);
 
   println("computing mple")
-  @time ws["MPLE"]  = GynC.mple(m, w0, niter, 0.9, h)
+  @time ws["MPLE"]  = GynC.mple(m, w0, niter, mplegamma, h)
 
   #@time ws["Reference Prior"] = GynC.mple(m, w0, niter, 1, h);
 
@@ -31,63 +50,54 @@ function paperplot(;nsamples = 100, niter=50, h=5, zmult=10, smoothmult=10, pati
 
   # pi 0 plot
   winv = inverseweights(muni.xs)
-  pi0plot = plotrow([winv], muni; patient=patient, kwargs...)
-  pi0plot[end] = plotpi1patient(patient, nsamples=nsamples, ylims=(0,400))
-  ncol = length(pi0plot)
+  pi0plot = plotrow([winv], muni; kwargs...)
 
+  # use mcmc samples for pi1 traj 
+  begin 
+    s = JLD.load("../data/0911/allsamples.jld")["samples"]
+    xs = subsample([s[patient]], nsamples, 100_000)
+    w = uniformweights(xs)
 
-  aplots = vcat(pi0plot, map(x->plotrow(ws[x], m; patient=patient, kwargs...), ["NPMLE", "DS-MLE", "MPLE"])...)
-  plot(aplots..., size=(1200, 300*3), layout = (Int(length(aplots)/ncol), ncol))
+    for (i, s) in enumerate(densspecies)
+      densxs = map(x->x[s], xs)
+      (l,h) = extrema(densxs)
+
+      plot([l,h], [1/(h-l), 1/(h-l)], legend=false) # uniform prior
+      pi0plot[i] = plotkde!(densxs, w, seriescolor=postcolor, ylims=ylimsdens) # sampled posterior
+    end
+
+    plottrajdens(xs, w)
+    pi0plot[end] = plotdatas!([datas[patient]], ylims = ylimstraj)
+  end
+
+  aplots = vcat(map(x->plotrow(ws[x], m; kwargs...), ["NPMLE", "DS-MLE", "MPLE"])...)
+
+  plot(pi0plot..., aplots..., size=(1200, 300*3), layout = (4, length(pi0plot)))
 end
 
+
 " return the plots for one row "
-function plotrow(ws, m;
-  patient = 4,
-  ylimsdens = :auto,
-  ylimstraj = (0,400),
-  densspecies = [8, 31, 44, 50, 76]
- )
-  
+function plotrow(ws, m)
   meas = [datas[patient]]
 
-  ts = 0:1/4:30
-  trajspecies = 3
-  sols = [GynC.forwardsol(x, ts)[:,GynC.measuredinds[trajspecies]] for x in m.xs];
 
   wpost = bayesposterior(m, meas, ws[end])
 
   plots = [begin
 	     xs = map(x->x[s], m.xs)
-	     plotkdeiters(xs, ws, ylims = ylimsdens)
-	     plotkde!(xs, wpost, ylims = ylimsdens)
+	     plotkdeiters(xs, [ws[end]], ylims = ylimsdens)
+	     plotkde!(xs, wpost, ylims = ylimsdens, seriescolor=postcolor)
 	   end for s in densspecies]
 
+  plottrajdens(m.xs, ws[end])
+  push!(plots, plotdatas!(datas, ylims=ylimstraj))
 
-  plottrajdens(ts, sols, ws[end], ylims=ylimstraj)
-  push!(plots, plotdatas!(datas, trajspecies, ylims=ylimstraj))
-
-  plottrajdens(ts, sols, wpost, ylims = ylimstraj)
-  push!(plots, plotdatas!(meas, trajspecies, ylims=ylimstraj))
+  plottrajdens(m.xs, wpost)
+  push!(plots, plotdatas!(meas, ylims=ylimstraj))
   plots
 end
 
-
-function plotpi1patient(patient;
-		       nsamples = 100,
-		       ylims = :auto,
-		       kwargs...)
-
-  s = JLD.load("../data/0911/allsamples.jld")["samples"]
-  xs = subsample([s[patient]], nsamples, 100_000)
-
-  ts = 0:1/4:30
-  trajspecies = 3
-  sols = [GynC.forwardsol(x, ts)[:,GynC.measuredinds[trajspecies]] for x in xs];
-
-  w = ones(length(xs)) / length(xs)
-  plottrajdens(ts, sols, w; ylims=ylims, kwargs...)
-  plotdatas!([datas[patient]], trajspecies, ylims = ylims)
-end
+### plot helper functions
 
 
 
@@ -101,7 +111,6 @@ function plotkdeiters(xs, ws; kwargs...)
   p
 end
 
-const KDEBANDWIDTHMULT = 0.3
 
 function plotkde!(xs, w; kwargs...)
   bw = KernelDensity.default_bandwidth(xs) * KDEBANDWIDTHMULT
@@ -110,30 +119,28 @@ function plotkde!(xs, w; kwargs...)
 end
 
 
-plottrajdens(ts, sols::Vector, w; kwargs...) = plottrajdens(ts, hcat(sols...),w; kwargs...)
-
-
 " plot the kde of the trajectories "
-function plottrajdens(ts, sols::Matrix, weights::Vector = ones(size(sols,1));
-		      ylims = :auto,
-		      cquant = 0.98,
+function plottrajdens(xs::Vector, weights::Vector = uniformweights(xs);
+		      cquant = 0.8,
 		      kwargs...)
+  trajs = hcat([GynC.forwardsol(x, trajts)[:,GynC.measuredinds[trajspecies]] for x in xs]...)
 
-  bnd = ylims == :auto ? extrema(sols) : ylims
+  bnd = ylimstraj == :auto ? extrema(trajs) : ylimstraj
 
-  kdes = [KernelDensity.kde(filter(x->!isnan(x),sols[t,:]), boundary = bnd, weights=weights) for t in 1:size(sols, 1)]
+  kdes = [KernelDensity.kde(filter(x->(!isnan(x) && x<bnd[2]),trajs[t,:]), boundary = bnd, weights=weights) for t in 1:size(trajs, 1)]
 
   ys = kdes[1].x
   dens = hcat([k.density for k in kdes]...)
 
   clims = (0, quantile(vec(dens), cquant))
+  clims = (0, maximum(dens) * cquant)
 
-  contour(ts, ys, dens, clims=clims, fill=true, seriescolor = :heat, legend=false, kwargs...)
+  contour(trajts, ys, dens, clims=clims, fill=true, seriescolor = :heat, legend=false, kwargs...)
 end
 
 " plot the given data "
-function plotdatas!(datas, species = 3; kwargs...)
-  specdatas = map(d->d[:,species], datas)
+function plotdatas!(datas; kwargs...)
+  specdatas = map(d->d[:,trajspecies], datas)
   scatter!(0:30, specdatas, color=:blue, legend=false, ms=1; kwargs...)
 end
 
@@ -213,6 +220,10 @@ end
 function inverseweights(xs::Vector, stdmult=30)
   w=1./mykde(xs,xs,stdmult)
   normalize!(w, 1)
+end
+
+function uniformweights(xs::Vector)
+  ones(length(xs)) / length(xs)
 end
 
 " compute the kde evaluations at 'evals', given the points 'data'.
