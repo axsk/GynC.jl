@@ -5,7 +5,9 @@ using Plots
 
 ### individual plot functions
 
-function paperplot(;nsamples = 100, niter=50, h=5, zmult=10, smoothmult=10, kwargs...)
+paperhd() = paperplot(nsamples=500, niter=100, h=5, zmult=50, smoothmult=50)
+
+function paperplot(;nsamples = 100, niter=50, h=5, zmult=10, smoothmult=10, patient=1, kwargs...)
   m    = gyncmodel(samplepi1(nsamples), zmult=zmult)
   ms   = smoothedmodel(m, smoothmult)
   muni = gyncmodel(samplepi0(nsamples), zmult=0)
@@ -28,14 +30,13 @@ function paperplot(;nsamples = 100, niter=50, h=5, zmult=10, smoothmult=10, kwar
   ### plot results
 
   # pi 0 plot
-  winv = uniformweights(muni.xs)
-  pi0plot = plotrow([winv], muni; kwargs...)
+  winv = inverseweights(muni.xs)
+  pi0plot = plotrow([winv], muni; patient=patient, kwargs...)
+  pi0plot[end] = plotpi1patient(patient, nsamples=nsamples, ylims=(0,400))
   ncol = length(pi0plot)
 
-  @show typeof(pi0plot), typeof(plotrow(ws["MPLE"], m))
 
-  aplots = vcat(pi0plot, map(x->plotrow(ws[x], m; kwargs...), ["NPMLE", "DS-MLE", "MPLE"])...)
-  @show aplots
+  aplots = vcat(pi0plot, map(x->plotrow(ws[x], m; patient=patient, kwargs...), ["NPMLE", "DS-MLE", "MPLE"])...)
   plot(aplots..., size=(1200, 300*3), layout = (Int(length(aplots)/ncol), ncol))
 end
 
@@ -44,7 +45,7 @@ function plotrow(ws, m;
   patient = 4,
   ylimsdens = :auto,
   ylimstraj = (0,400),
-  densspecies = [8 31 44 50 76]
+  densspecies = [8, 31, 44, 50, 76]
  )
   
   meas = [datas[patient]]
@@ -53,50 +54,79 @@ function plotrow(ws, m;
   trajspecies = 3
   sols = [GynC.forwardsol(x, ts)[:,GynC.measuredinds[trajspecies]] for x in m.xs];
 
-  plots = Plots.Plot[]
+  wpost = bayesposterior(m, meas, ws[end])
 
-  for s in densspecies
-    sxs = map(x->x[s], m.xs)
-    push!(plots, plotkdeiters(sxs, ws, bandwidthmult = 0.5, ylims=ylimsdens))
-  end
+  plots = [begin
+	     xs = map(x->x[s], m.xs)
+	     plotkdeiters(xs, ws, ylims = ylimsdens)
+	     plotkde!(xs, wpost, ylims = ylimsdens)
+	   end for s in densspecies]
+
 
   plottrajdens(ts, sols, ws[end], ylims=ylimstraj)
   push!(plots, plotdatas!(datas, trajspecies, ylims=ylimstraj))
 
-  @show ws[end] - bayesposterior(m, meas, ws[end])
-
-  plottrajdens(ts, sols, bayesposterior(m, meas, ws[end]), ylims = ylimstraj)
+  plottrajdens(ts, sols, wpost, ylims = ylimstraj)
   push!(plots, plotdatas!(meas, trajspecies, ylims=ylimstraj))
   plots
 end
 
-" plot the kde of iterations of w "
-function plotkdeiters(xs, ws; bandwidthmult=0.1, kwargs...)
-  colors = colormap("blues", length(ws)+1)[2:end]'
 
-  plot(legend=false; kwargs...)
+function plotpi1patient(patient;
+		       nsamples = 100,
+		       ylims = :auto,
+		       kwargs...)
 
-  for (w,c) in zip(ws, colors)
-    bw = KernelDensity.default_bandwidth(xs)
-    k=kde(xs, weights=w, bandwidth=bw*bandwidthmult)
-    plot!(k.x, k.density, seriescolor = c)#, linecolor = colors[i])
-  end
+  s = JLD.load("../data/0911/allsamples.jld")["samples"]
+  xs = subsample([s[patient]], nsamples, 100_000)
 
-  plot!()
+  ts = 0:1/4:30
+  trajspecies = 3
+  sols = [GynC.forwardsol(x, ts)[:,GynC.measuredinds[trajspecies]] for x in xs];
+
+  w = ones(length(xs)) / length(xs)
+  plottrajdens(ts, sols, w; ylims=ylims, kwargs...)
+  plotdatas!([datas[patient]], trajspecies, ylims = ylims)
 end
 
+
+
+" plot the kde of iterations of w "
+function plotkdeiters(xs, ws; kwargs...)
+  colors = colormap("blues", length(ws)+1)[2:end]'
+  p = plot(legend=false; kwargs...)
+  for (w,c) in zip(ws, colors)
+    plotkde!(xs, w; seriescolor = c)
+  end
+  p
+end
+
+const KDEBANDWIDTHMULT = 0.3
+
+function plotkde!(xs, w; kwargs...)
+  bw = KernelDensity.default_bandwidth(xs) * KDEBANDWIDTHMULT
+  k = kde(xs, weights=w, bandwidth=bw)
+  plot!(k.x, k.density; kwargs...)
+end
+
+
+plottrajdens(ts, sols::Vector, w; kwargs...) = plottrajdens(ts, hcat(sols...),w; kwargs...)
+
+
 " plot the kde of the trajectories "
-function plottrajdens(ts, sols, w::Vector; ylims = :auto, kwargs...)
-  msol = hcat(sols...)
+function plottrajdens(ts, sols::Matrix, weights::Vector = ones(size(sols,1));
+		      ylims = :auto,
+		      cquant = 0.98,
+		      kwargs...)
 
-  bnd = ylims == :auto ? extrema(msol) : ylims
+  bnd = ylims == :auto ? extrema(sols) : ylims
 
-  kdes = [KernelDensity.kde(filter(x->!isnan(x),msol[t,:]), boundary = bnd, weights=w) for t in 1:size(msol, 1)]
+  kdes = [KernelDensity.kde(filter(x->!isnan(x),sols[t,:]), boundary = bnd, weights=weights) for t in 1:size(sols, 1)]
 
   ys = kdes[1].x
   dens = hcat([k.density for k in kdes]...)
 
-  clims = (0, quantile(vec(dens), 0.98))
+  clims = (0, quantile(vec(dens), cquant))
 
   contour(ts, ys, dens, clims=clims, fill=true, seriescolor = :heat, legend=false, kwargs...)
 end
@@ -120,7 +150,7 @@ function gyncmodel(xs; zmult = 0, sigma=0.1)
   xs = xs[nonaninds]
   ys = ys[nonaninds]
 
-  err = MatrixNormalCentered(repmat(sigma*GynC.model_measerrors' * 10, 31)) # 10 hotfix for static scaling in mode.jl
+  err = GynC.MatrixNormalCentered(repmat(sigma*GynC.model_measerrors' * 10, 31)) # 10 hotfix for static scaling in mode.jl
 
   zs = map(y->y+rand(err), repmat(ys, zmult));
 
@@ -130,12 +160,12 @@ end
 " smooth the data of the given gync model "
 function smoothedmodel(m, smoothmult)
   sigmas = [1*KernelDensity.default_bandwidth(filter(x->!isnan(x),[d[i,j] for d in datas])) for i=1:31, j=1:4]
-  smoothkernel = MatrixNormalCentered(sigmas)
+  smoothkernel = GynC.MatrixNormalCentered(sigmas)
 
   ms = GynC.smoothdata(m, smoothmult, smoothkernel);
 
   sigmanew = sqrt.(m.measerr.sigmas .^ 2 + smoothkernel.sigmas .^ 2)
-  ms.measerr = MatrixNormalCentered(sigmanew)
+  ms.measerr = GynC.MatrixNormalCentered(sigmanew)
   info("adjusted meas error")
 
   ms
@@ -148,52 +178,7 @@ function bayesposterior(m, data, wprior)
 end
 
 
-### implementation of the measurement error distribution (TODO: move to gync.jl)
-
-import Distributions: pdf, rand, logpdf
-type MatrixNormalCentered <: Distribution
-  sigmas
-end
-
-function rand(n::MatrixNormalCentered)
-  map(s->rand(Normal(0,s)), n.sigmas)
-end
-
-function pdf(n::MatrixNormalCentered, x::Matrix)
-  exp(logpdf(n,x))
-end
-
-function logpdf(n::MatrixNormalCentered, x::Matrix)
-  @assert size(n.sigmas) == size(x)
-  d = 0
-  for (x, s) in zip(x, n.sigmas)
-    isnan(x) && continue
-    #d += -(x/s)^2
-    d += logpdf(Normal(0, s), x)
-  end
-  d
-end
-
-#=function mlikelihoodmat(zs, ys, d)
-  x= Array(Float64, (length(zs), length(ys)))
-  for j=1:length(ys)
-    for i=1:length(zs)
-      x[i,j] = logpdf(d, zs[i]-zs[j])
-    end
-  end
-  exp(x-maximum(x))
-end=#
-
-
 ### utility function for handling samples, data and weights
-
-" load the mcmc samples corresponding to pi1 "
-function samplepi1(n, burnin=100_000)
-  s = JLD.load("../data/0911/allsamples.jld")["samples"]
-  xs = subsample(s, n, burnin);
-end
-
-" generate samples according to pi0 (uniform in parms, mixture in y0) "
 function samplepi0(nsamples)
   yprior = GynC.priory0(1)
   xs = Vector{Float64}[]
@@ -202,6 +187,11 @@ function samplepi0(nsamples)
     !any(isnan(GynC.forwardsol(x))) && push!(xs, x)
   end
   xs
+end
+
+function samplepi1(n, burnin=100_000)
+  s = JLD.load("../data/0911/allsamples.jld")["samples"]
+  xs = subsample(s, n, burnin)
 end
 
 " given a vector of samplings, pickout `n` samples after the first `burnin` iters "
@@ -220,7 +210,7 @@ function subsample(samplings::Vector{Matrix{Float64}}, n::Int, burnin::Int)
 end
 
 " given some sampling, compute the weigts from the inverse of the kde to obtain a weighted sampling corresponding to the uniform distribution" 
-function uniformweights(xs::Vector, stdmult=30)
+function inverseweights(xs::Vector, stdmult=30)
   w=1./mykde(xs,xs,stdmult)
   normalize!(w, 1)
 end
