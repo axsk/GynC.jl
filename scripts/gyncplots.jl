@@ -4,26 +4,30 @@ using JLD
 using KernelDensity
 using Plots
 
-const densspecies = [8, 31, 44, 50, 76]
+#const densspecies = [8, 31, 44, 50, 76]
+const densspecies = [31]
 
-const patient = 1
+const patient = 4
 
-const trajspecies = 2
+const trajspecies = 3
 const trajts = 0:1/4:30
+const trajclims = (0, 0.04)
 
-const ylimsdens=(0,0.2)
-const ylimstraj=(0,100)
+#const ylimsdens=[(0,0.2), (0,0.2), (0,0.6), (0,1.2), (0,0.1)]
+const ylimsdens=[(0,0.2)]
+const ylimstraj=(0,400)
 
-const postcolor = :cyan
+const postcolor = :red
 const KDEBANDWIDTHMULT = 0.2
+const kdenpoints = 300
 
 const mplegamma = 0.95
 
 ### individual plot functions
 
-paperhd() = paperplot(nsamples=100, niter=300, h=1, zmult=50, smoothmult=50) 
+paperhd() = (srand(1); paperplot(nsamples=200, niter=300, h=1, zmult=100, smoothmult=100); savefig("gyncplots.pdf"))
 
-test() = paperplot(nsamples=50, niter=20, h=1, zmult=5, smoothmult=5)
+test() = (srand(1); paperplot(nsamples=50, niter=20, h=1, zmult=5, smoothmult=5))
 
 
 function paperplot(;nsamples = 100, niter=50, h=5, zmult=10, smoothmult=10, kwargs...)
@@ -60,10 +64,10 @@ function paperplot(;nsamples = 100, niter=50, h=5, zmult=10, smoothmult=10, kwar
 
     for (i, s) in enumerate(densspecies)
       densxs = map(x->x[s], xs)
-      (l,h) = extrema(densxs)
+      (l,h) = (0, GynC.refparms[s] * 5)
 
-      plot([l,h], [1/(h-l), 1/(h-l)], legend=false) # uniform prior
-      pi0plot[i] = plotkde!(densxs, w, seriescolor=postcolor, ylims=ylimsdens) # sampled posterior
+      plot([l,h], [1/(h-l), 1/(h-l)], legend=false, seriescolor=colormap("blues")[end]) # uniform prior
+      pi0plot[i] = plotkde!(densxs, w, seriescolor=postcolor, ylims=ylimsdens[i]) # sampled posterior
     end
 
     plottrajdens(xs, w)
@@ -85,9 +89,10 @@ function plotrow(ws, m)
 
   plots = [begin
 	     xs = map(x->x[s], m.xs)
-	     plotkdeiters(xs, [ws[end]], ylims = ylimsdens)
-	     plotkde!(xs, wpost, ylims = ylimsdens, seriescolor=postcolor)
-	   end for s in densspecies]
+	     xlims = (0, GynC.refparms[s] * 5)
+	     plotkdeiters(xs, [ws[end]], ylims = ylimsdens[i])
+	     plotkde!(xs, wpost, ylims = ylimsdens[i], seriescolor=postcolor, xlims=xlims)
+	     end for (i,s) in enumerate(densspecies)]
 
   plottrajdens(m.xs, ws[end])
   push!(plots, plotdatas!(datas, ylims=ylimstraj))
@@ -114,28 +119,28 @@ end
 
 function plotkde!(xs, w; kwargs...)
   bw = KernelDensity.default_bandwidth(xs) * KDEBANDWIDTHMULT
-  k = kde(xs, weights=w, bandwidth=bw)
+  k = kde(xs, weights=w, bandwidth=bw, npoints=kdenpoints)
   plot!(k.x, k.density; kwargs...)
 end
 
 
 " plot the kde of the trajectories "
 function plottrajdens(xs::Vector, weights::Vector = uniformweights(xs);
-		      cquant = 0.8,
 		      kwargs...)
   trajs = hcat([GynC.forwardsol(x, trajts)[:,GynC.measuredinds[trajspecies]] for x in xs]...)
 
   bnd = ylimstraj == :auto ? extrema(trajs) : ylimstraj
 
-  kdes = [KernelDensity.kde(filter(x->(!isnan(x) && x<bnd[2]),trajs[t,:]), boundary = bnd, weights=weights) for t in 1:size(trajs, 1)]
+  kdes = [KernelDensity.kde(filter(x->(!isnan(x) && x<bnd[2] && x>bnd[1]),trajs[t,:]), boundary = bnd, weights=weights, npoints = kdenpoints) for t in 1:size(trajs, 1)]
 
   ys = kdes[1].x
   dens = hcat([k.density for k in kdes]...)
 
-  clims = (0, quantile(vec(dens), cquant))
-  clims = (0, maximum(dens) * cquant)
+  #clims = (0, quantile(vec(dens), cquant))
+  #clims = (0, maximum(dens) * cquant)
+  println("maximal traj density: $(maximum(dens)); 98% quantile: $(quantile(vec(dens), 0.98))")
 
-  contour(trajts, ys, dens, clims=clims, fill=true, seriescolor = :heat, legend=false, kwargs...)
+  contour(trajts, ys, dens, clims=trajclims, fill=true, seriescolor = :heat, legend=false, kwargs...)
 end
 
 " plot the given data "
