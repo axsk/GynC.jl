@@ -1,6 +1,8 @@
 using GynC, Plots, LaTeXStrings
 import Plots.scatter
 
+pyplot(grid=false)
+
 include("../src/eb/plot.jl")
 
 function scatter(ys::Vector{Vector{Float64}}; kwargs...)

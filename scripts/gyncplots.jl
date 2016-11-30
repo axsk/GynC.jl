@@ -4,36 +4,46 @@ using JLD
 using KernelDensity
 using Plots
 
+pyplot(grid=false)
+
 #const densspecies = [8, 31, 44, 50, 76]
 const densspecies = [31]
+const denskdebw = 0.3
+const denscolor = :black
 
 const patient = 4
+const sigma = 0.2
 
 const trajspecies = 3
 const trajts = 0:1/4:30
 const trajclims = (0, 0.04)
+const trajalpha = 2
 
 #const ylimsdens=[(0,0.2), (0,0.2), (0,0.6), (0,1.2), (0,0.1)]
 const ylimsdens=[(0,0.2)]
-const ylimstraj=(0,400)
+const ylimstraj=(0,500)
 
-const postcolor = :red
-const KDEBANDWIDTHMULT = 0.2
+const postcolor = :dodgerblue
+const datacolor = :dodgerblue
+
 const kdenpoints = 300
 
-const mplegamma = 0.95
+const mplegamma = 0.90
+const inverseweightsstd = 20
+
+isp2 = false
 
 ### individual plot functions
-
-paperhd() = (srand(1); paperplot(nsamples=200, niter=300, h=1, zmult=100, smoothmult=100); savefig("gyncplots.pdf"))
+# geandert: nsamples, niter
+papersave() = (srand(1); paperplot(); savefig("gyncplots.pdf"))
 
 test() = (srand(1); paperplot(nsamples=50, niter=20, h=1, zmult=5, smoothmult=5))
 
 
-function paperplot(;nsamples = 100, niter=50, h=5, zmult=10, smoothmult=10, kwargs...)
+function paperplot(;nsamples = 600, niter=1000, h=0.01, zmult=50, smoothmult=100, kwargs...)
   m    = gyncmodel(samplepi1(nsamples), zmult=zmult)
   ms   = smoothedmodel(m, smoothmult)
-  muni = gyncmodel(samplepi0(nsamples), zmult=0)
+  muni = gyncmodel(vcat(samplepi0(nsamples), m.xs), zmult=0)
 
   # estimate priors
   w0 = uniformweights(m.xs)
@@ -46,16 +56,30 @@ function paperplot(;nsamples = 100, niter=50, h=5, zmult=10, smoothmult=10, kwar
   @time ws["DS-MLE"] = GynC.em(ms, w0, niter);
 
   println("computing mple")
-  @time ws["MPLE"]  = GynC.mple(m, w0, niter, mplegamma, h)
+  @time begin
+    ws["MPLE"]  = GynC.mple(m, w0, round(Int,niter/2), mplegamma, h)
+    ws["MPLE"]  = vcat(ws["MPLE"], GynC.mple(m, ws["MPLE"][end], round(Int,niter/10), mplegamma, h/2))
+  end
+
+  info("max(delta w)", maximum(abs(ws["MPLE"][end] - ws["MPLE"][end-1])))
+
+
+
 
   #@time ws["Reference Prior"] = GynC.mple(m, w0, niter, 1, h);
 
   ### plot results
 
+  isp2=true
   # pi 0 plot
   winv = inverseweights(muni.xs)
   pi0plot = plotrow([winv], muni; kwargs...)
 
+  let ys = pi0plot[1].series_list[1][:y]
+    pi0plot[1].series_list[1][:y] = fill(mean(ys), length(ys))
+  end
+
+  #=
   # use mcmc samples for pi1 traj 
   begin 
     s = JLD.load("../data/0911/allsamples.jld")["samples"]
@@ -73,10 +97,12 @@ function paperplot(;nsamples = 100, niter=50, h=5, zmult=10, smoothmult=10, kwar
     plottrajdens(xs, w)
     pi0plot[end] = plotdatas!([datas[patient]], ylims = ylimstraj)
   end
+  =#
 
   aplots = vcat(map(x->plotrow(ws[x], m; kwargs...), ["NPMLE", "DS-MLE", "MPLE"])...)
 
-  plot(pi0plot..., aplots..., size=(1200, 300*3), layout = (4, length(pi0plot)))
+  p=plot(pi0plot..., aplots..., size=(1200, 300*3), layout = (4, length(pi0plot)))
+  p, m, ws
 end
 
 
@@ -95,10 +121,11 @@ function plotrow(ws, m)
 	     end for (i,s) in enumerate(densspecies)]
 
   plottrajdens(m.xs, ws[end])
-  push!(plots, plotdatas!(datas, ylims=ylimstraj))
+  push!(plots, plotdatas!(datas, ylims=ylimstraj, markerstrokecolor=:black, color=:black, ms=0.6))
+  isp2 = false
 
   plottrajdens(m.xs, wpost)
-  push!(plots, plotdatas!(meas, ylims=ylimstraj))
+  push!(plots, plotdatas!(meas, ylims=ylimstraj, ms=2.5))
   plots
 end
 
@@ -108,9 +135,10 @@ end
 
 " plot the kde of iterations of w "
 function plotkdeiters(xs, ws; kwargs...)
-  colors = colormap("blues", length(ws)+1)[2:end]'
+  colors = (colormap("blues", length(ws)+1)[2:end])'
   p = plot(legend=false; kwargs...)
   for (w,c) in zip(ws, colors)
+    c = denscolor 
     plotkde!(xs, w; seriescolor = c)
   end
   p
@@ -118,8 +146,9 @@ end
 
 
 function plotkde!(xs, w; kwargs...)
-  bw = KernelDensity.default_bandwidth(xs) * KDEBANDWIDTHMULT
-  k = kde(xs, weights=w, bandwidth=bw, npoints=kdenpoints)
+  #bw = KernelDensity.default_bandwidth(xs) * denskdebwmult
+  #@show bw
+  k = kde(xs, weights=w, bandwidth=denskdebw, npoints=kdenpoints)
   plot!(k.x, k.density; kwargs...)
 end
 
@@ -129,31 +158,49 @@ function plottrajdens(xs::Vector, weights::Vector = uniformweights(xs);
 		      kwargs...)
   trajs = hcat([GynC.forwardsol(x, trajts)[:,GynC.measuredinds[trajspecies]] for x in xs]...)
 
+  #=
   bnd = ylimstraj == :auto ? extrema(trajs) : ylimstraj
+  (l,h) = bnd
 
-  kdes = [KernelDensity.kde(filter(x->(!isnan(x) && x<bnd[2] && x>bnd[1]),trajs[t,:]), boundary = bnd, weights=weights, npoints = kdenpoints) for t in 1:size(trajs, 1)]
+  bndaugmentation = 0.05
+  bndaug = (l-(h-l)*bndaugmentation, h+(h-l)*bndaugmentation)
 
-  ys = kdes[1].x
-  dens = hcat([k.density for k in kdes]...)
+  kdes = [KernelDensity.kde(filter(x->!isnan(x),trajs[t,:]), boundary = bndaug, weights=weights, npoints = round(Int, kdenpoints*(1+2*bndaugmentation)), bandwidth=10) for t in 1:size(trajs, 1)]
+
+  inds = find(x->(x>=l&&x<=h), kdes[1].x)
+
+  ys = kdes[1].x[inds]
+  dens = hcat([k.density[inds] for k in kdes]...)
 
   #clims = (0, quantile(vec(dens), cquant))
   #clims = (0, maximum(dens) * cquant)
-  println("maximal traj density: $(maximum(dens)); 98% quantile: $(quantile(vec(dens), 0.98))")
+  #println("maximal traj density: $(maximum(dens)); 98% quantile: $(quantile(vec(dens), 0.98))")
 
-  contour(trajts, ys, dens, clims=trajclims, fill=true, seriescolor = :heat, legend=false, kwargs...)
+  p=contour(trajts, ys, dens, clims=trajclims, fill=true, seriescolor = :heat, legend=false, kwargs...)
+
+  =#
+
+  p=plot(legend=false, ylims=ylimstraj)
+  @show maximum(weights)
+  for i in 1:size(trajs, 2)
+    a = min(1., weights[i]*trajalpha)
+    isp2 && (a = a * 10)
+    plot!(p, trajts, trajs[:,i], alpha=a, color=:black)
+  end
+  p
 end
 
 " plot the given data "
 function plotdatas!(datas; kwargs...)
   specdatas = map(d->d[:,trajspecies], datas)
-  scatter!(0:30, specdatas, color=:blue, legend=false, ms=1; kwargs...)
+  scatter!(0:30, specdatas, color=datacolor, markerstrokecolor=datacolor, legend=false, ms=1; kwargs...)
 end
 
 
 ### model generation
 
 " generate a gync likelihoodmodel "
-function gyncmodel(xs; zmult = 0, sigma=0.1)
+function gyncmodel(xs; zmult = 0)
   phi(x) = GynC.forwardsol(x)[:,GynC.measuredinds]
   ys = phi.(xs);
 
@@ -196,7 +243,7 @@ function samplepi0(nsamples)
   xs = Vector{Float64}[]
   while length(xs) < nsamples
     x = vcat(GynC.refparms.* rand(82) * 5, rand(yprior), 30)
-    !any(isnan(GynC.forwardsol(x))) && push!(xs, x)
+    !any(isnan(GynC.forwardsol(x, trajts))) && push!(xs, x)
   end
   xs
 end
@@ -222,8 +269,8 @@ function subsample(samplings::Vector{Matrix{Float64}}, n::Int, burnin::Int)
 end
 
 " given some sampling, compute the weigts from the inverse of the kde to obtain a weighted sampling corresponding to the uniform distribution" 
-function inverseweights(xs::Vector, stdmult=30)
-  w=1./mykde(xs,xs,stdmult)
+function inverseweights(xs::Vector)
+  w=1./mykde(xs,xs,inverseweightsstd)
   normalize!(w, 1)
 end
 
