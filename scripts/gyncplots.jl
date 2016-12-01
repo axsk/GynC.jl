@@ -9,7 +9,7 @@ pyplot(grid=false)
 #const densspecies = [8, 31, 44, 50, 76]
 const densspecies = [31]
 const denskdebw = 0.3
-const denscolor = :black
+const denscolor = :olivedrab
 
 const patient = 4
 const sigma = 0.2
@@ -17,7 +17,7 @@ const sigma = 0.2
 const trajspecies = 3
 const trajts = 0:1/4:30
 const trajclims = (0, 0.04)
-const trajalpha = 2
+const trajalphauni = 6000
 
 #const ylimsdens=[(0,0.2), (0,0.2), (0,0.6), (0,1.2), (0,0.1)]
 const ylimsdens=[(0,0.2)]
@@ -32,22 +32,28 @@ const mplegamma = 0.90
 const inverseweightsstd = 20
 
 isp2 = false
+col = 1
 
 ### individual plot functions
 # geandert: nsamples, niter
-papersave() = (srand(1); paperplot(); savefig("gyncplots.pdf"))
+papersave() = (srand(1); paperplot(); savefig("papergync.pdf"))
 
 test() = (srand(1); paperplot(nsamples=50, niter=20, h=1, zmult=5, smoothmult=5))
 
+global lastresult
 
-function paperplot(;nsamples = 600, niter=1000, h=0.01, zmult=50, smoothmult=100, kwargs...)
+function gendata(nsamples, zmult, smoothmult)
   m    = gyncmodel(samplepi1(nsamples), zmult=zmult)
   ms   = smoothedmodel(m, smoothmult)
   muni = gyncmodel(vcat(samplepi0(nsamples), m.xs), zmult=0)
+  m, ms, muni
+end
 
-  # estimate priors
+function computeweights(m, ms, muni, niter, mplegamma, h)
   w0 = uniformweights(m.xs)
   ws = Dict{String, Vector{Vector{Float64}}}()
+
+  winv = inverseweights(muni.xs)
 
   println("computing npmle")
   @time ws["NPMLE"] = GynC.em(m, w0, niter)
@@ -58,51 +64,38 @@ function paperplot(;nsamples = 600, niter=1000, h=0.01, zmult=50, smoothmult=100
   println("computing mple")
   @time begin
     ws["MPLE"]  = GynC.mple(m, w0, round(Int,niter/2), mplegamma, h)
-    ws["MPLE"]  = vcat(ws["MPLE"], GynC.mple(m, ws["MPLE"][end], round(Int,niter/10), mplegamma, h/2))
+    ws["MPLE"]  = vcat(ws["MPLE"], GynC.mple(m, ws["MPLE"][end], round(Int,niter/2), mplegamma, h/10))
   end
 
   info("max(delta w)", maximum(abs(ws["MPLE"][end] - ws["MPLE"][end-1])))
+  ws["uni"] = [winv]
+  ws
+end
 
+function paperplot(; nsamples=600, zmult=50, smoothmult=100, niter=1000, h=0.01, kwargs...)
+  m, ms, muni = gendata(nsamples, zmult, smoothmult)
+  ws = computeweights(m, ms, muni, niter, mplegamma, h)
+  p = paperplot(m, muni, ws; kwargs...)
+  global lastresult = ((m,ms,muni), ws, p)
+  p
+end
 
+function plotlast()
+  ((m, ms, muni), ws, p) = lastresult
+  paperplot(m, muni, ws)
+end
 
-
-  #@time ws["Reference Prior"] = GynC.mple(m, w0, niter, 1, h);
-
-  ### plot results
-
+function paperplot(m, muni, ws; kwargs...)
   isp2=true
-  # pi 0 plot
-  winv = inverseweights(muni.xs)
-  pi0plot = plotrow([winv], muni; kwargs...)
+  pi0plot = plotrow(ws["uni"], muni; kwargs...)
 
   let ys = pi0plot[1].series_list[1][:y]
     pi0plot[1].series_list[1][:y] = fill(mean(ys), length(ys))
   end
 
-  #=
-  # use mcmc samples for pi1 traj 
-  begin 
-    s = JLD.load("../data/0911/allsamples.jld")["samples"]
-    xs = subsample([s[patient]], nsamples, 100_000)
-    w = uniformweights(xs)
-
-    for (i, s) in enumerate(densspecies)
-      densxs = map(x->x[s], xs)
-      (l,h) = (0, GynC.refparms[s] * 5)
-
-      plot([l,h], [1/(h-l), 1/(h-l)], legend=false, seriescolor=colormap("blues")[end]) # uniform prior
-      pi0plot[i] = plotkde!(densxs, w, seriescolor=postcolor, ylims=ylimsdens[i]) # sampled posterior
-    end
-
-    plottrajdens(xs, w)
-    pi0plot[end] = plotdatas!([datas[patient]], ylims = ylimstraj)
-  end
-  =#
-
   aplots = vcat(map(x->plotrow(ws[x], m; kwargs...), ["NPMLE", "DS-MLE", "MPLE"])...)
 
-  p=plot(pi0plot..., aplots..., size=(1200, 300*3), layout = (4, length(pi0plot)))
-  p, m, ws
+  plot(pi0plot..., aplots..., size=(1200, 300*3), layout = (4, length(pi0plot)))
 end
 
 
@@ -120,12 +113,12 @@ function plotrow(ws, m)
 	     plotkde!(xs, wpost, ylims = ylimsdens[i], seriescolor=postcolor, xlims=xlims)
 	     end for (i,s) in enumerate(densspecies)]
 
-  plottrajdens(m.xs, ws[end])
-  push!(plots, plotdatas!(datas, ylims=ylimstraj, markerstrokecolor=:black, color=:black, ms=0.6))
+  plottrajdens(m.xs, ws[end], trajalpha = 16)
+  push!(plots, plotdatas!(datas, ylims=ylimstraj, markerstrokecolor=denscolor, color=denscolor, ms=2))
   isp2 = false
 
-  plottrajdens(m.xs, wpost)
-  push!(plots, plotdatas!(meas, ylims=ylimstraj, ms=2.5))
+  plottrajdens(m.xs, wpost, trajalpha = 8)
+  push!(plots, plotdatas!(meas, ylims=ylimstraj, ms=3.5))
   plots
 end
 
@@ -153,10 +146,14 @@ function plotkde!(xs, w; kwargs...)
 end
 
 
+function trajs(xs)
+  hcat([GynC.forwardsol(x, trajts)[:,GynC.measuredinds[trajspecies]] for x in xs]...)
+end
+
 " plot the kde of the trajectories "
 function plottrajdens(xs::Vector, weights::Vector = uniformweights(xs);
-		      kwargs...)
-  trajs = hcat([GynC.forwardsol(x, trajts)[:,GynC.measuredinds[trajspecies]] for x in xs]...)
+		      tjs = trajs(xs), trajalpha=5, kwargs...)
+
 
   #=
   bnd = ylimstraj == :auto ? extrema(trajs) : ylimstraj
@@ -182,10 +179,10 @@ function plottrajdens(xs::Vector, weights::Vector = uniformweights(xs);
 
   p=plot(legend=false, ylims=ylimstraj)
   @show maximum(weights)
-  for i in 1:size(trajs, 2)
-    a = min(1., weights[i]*trajalpha)
-    isp2 && (a = a * 10)
-    plot!(p, trajts, trajs[:,i], alpha=a, color=:black)
+  for i in 1:size(tjs, 2)
+    a = isp2 ? trajalphauni : trajalpha
+    a = min(1., weights[i]* a)
+    plot!(p, trajts, tjs[:,i], alpha=a, color=:black)
   end
   p
 end
@@ -193,7 +190,7 @@ end
 " plot the given data "
 function plotdatas!(datas; kwargs...)
   specdatas = map(d->d[:,trajspecies], datas)
-  scatter!(0:30, specdatas, color=datacolor, markerstrokecolor=datacolor, legend=false, ms=1; kwargs...)
+  scatter!(0:30, specdatas, color=datacolor, markerstrokecolor=datacolor, legend=false, ms=1.5; kwargs...)
 end
 
 
@@ -295,3 +292,4 @@ function alldatas(; minmeas=20)
 end
 
 global datas = alldatas();
+
