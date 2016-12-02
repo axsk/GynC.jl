@@ -43,11 +43,6 @@ end
 
 r(k::Real) = maxtreatamplitude(k) > 13 ? 1 : 0
 
-r(w::Vector) = dot(w, r.(w))
-
-
-
-
 #=
 
 ilyas alter code (bereits teilsangepasst)

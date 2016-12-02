@@ -5,9 +5,11 @@
 @deprecate likelihoodmat(zs, ys, rho_std) likelihoodmat(zs, ys, MvNormal(2, rho_std))
 
 @memoize Dict function likelihoodmat(zs, ys, d::Distribution)
-  info("computing likelihood matrix ($(length(zs))x$(length(ys)))")
+  print("computing likelihood matrix ($(length(zs))x$(length(ys)))")
   #@time L = [pdf(d, z-y) for z in zs, y in ys]
-  likelihoodmat_par(zs,ys,d)
+  t=@elapsed (L=likelihoodmat_par(zs,ys,d))
+  println(" ($t seconds)")
+  L::Matrix{Float64}
 end
 
 # parallelize over columns

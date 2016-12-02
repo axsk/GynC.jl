@@ -187,3 +187,8 @@ function logpdf(n::MatrixNormalCentered, x::Matrix)
   end
   d
 end
+
+import Base: ==, hash
+==(a::MatrixNormalCentered, b::MatrixNormalCentered) = a.sigmas == b.sigmas
+hash(a::MatrixNormalCentered) = hash(a.sigmas)
+
