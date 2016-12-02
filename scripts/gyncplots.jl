@@ -9,7 +9,7 @@ pyplot(grid=false)
 #const densspecies = [8, 31, 44, 50, 76]
 const densspecies = [31]
 const denskdebw = 0.3
-const denscolor = :olivedrab
+const denscolor = :orangered
 
 const patient = 4
 const sigma = 0.2
