@@ -72,7 +72,7 @@ function computeweights(m, ms, muni, niter, mplegamma, h)
   ws
 end
 
-function paperplot(; nsamples=600, zmult=50, smoothmult=100, niter=1000, h=0.01, kwargs...)
+function paperplot(; nsamples=600, zmult=100, smoothmult=200, niter=5000, h=0.01, kwargs...)
   m, ms, muni = gendata(nsamples, zmult, smoothmult)
   ws = computeweights(m, ms, muni, niter, mplegamma, h)
   p = paperplot(m, muni, ws; kwargs...)
