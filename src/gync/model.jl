@@ -5,7 +5,7 @@ const sampledinds  = deleteat!(collect(1:103), hillinds)
 
 const refparms    = refallparms[sampledinds]
 
-const model_measerrors = [120, 10, 400, 15.] / 10
+const model_measerrors = [120, 10, 400, 15.] / 10 # corresponding to 10% of ~ max. values
 
 #const defaultpropvar = include("data/proposals/allcovs.jl") * 2.38^2 / 115
 # shouldnt the squares be taken after the log?
@@ -166,8 +166,8 @@ end
 
 import Distributions: pdf, rand, logpdf
 
-type MatrixNormalCentered <: Distribution
-  sigmas
+type MatrixNormalCentered{T} <: Distribution
+  sigmas::Matrix{T}
 end
 
 function rand(n::MatrixNormalCentered)

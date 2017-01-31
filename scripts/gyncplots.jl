@@ -206,7 +206,7 @@ function gyncmodel(xs; zmult = 0)
   xs = xs[nonaninds]
   ys = ys[nonaninds]
 
-  err = GynC.MatrixNormalCentered(repmat(sigma*GynC.model_measerrors' * 10, 31)) # 10 hotfix for static scaling in mode.jl
+  err = GynC.MatrixNormalCentered(repmat(sigma*GynC.model_measerrors' * 10, 31)) # 10 hotfix for static scaling in model.jl
 
   zs = map(y->y+rand(err), repmat(ys, zmult));
 
@@ -258,7 +258,6 @@ function subsample(samplings::Vector{Matrix{Float64}}, n::Int, burnin::Int)
     nsamples = size(sampling, 1)
     step = floor(Int,(nsamples - burnin) / n * nsamplings)
     for i = burnin+1:step:nsamples
-      s = sampling[i,:]
       push!(res, sampling[i,:])
     end
   end
