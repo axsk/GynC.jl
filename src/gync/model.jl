@@ -161,34 +161,3 @@ function llh_measerror(error::Matrix)
 end
 
 
-# new implementation of the measurement error as Distribution
-# only used in scripts so far
-
-import Distributions: pdf, rand, logpdf
-
-type MatrixNormalCentered{T} <: Distribution
-  sigmas::Matrix{T}
-end
-
-function rand(n::MatrixNormalCentered)
-  map(s->rand(Normal(0,s)), n.sigmas)
-end
-
-function pdf(n::MatrixNormalCentered, x::Matrix)
-  exp(logpdf(n,x))
-end
-
-function logpdf(n::MatrixNormalCentered, x::Matrix)
-  @assert size(n.sigmas) == size(x)
-  d = 0
-  for (x, s) in zip(x, n.sigmas)
-    isnan(x) && continue
-    d += logpdf(Normal(0, s), x)
-  end
-  d
-end
-
-import Base: ==, hash
-==(a::MatrixNormalCentered, b::MatrixNormalCentered) = a.sigmas == b.sigmas
-hash(a::MatrixNormalCentered) = hash(a.sigmas)
-

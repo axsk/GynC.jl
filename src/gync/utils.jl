@@ -1,5 +1,3 @@
-using Iterators: product
-
 # compute a proposal density based on the covariance of given samples
 proposal(s::Matrix)   = cov(log(s)) * 2.38^2 / size(s,2)
 proposal(s::Sampling) = proposal(s.samples)
@@ -73,3 +71,35 @@ function dataframe(ss::Vector{Sampling})
     for s in ss]
   vcat(dfs...)
 end
+
+
+### new implementation of the measurement error as Distribution ###
+# only used in scripts so far
+
+import Distributions: pdf, rand, logpdf
+
+type MatrixNormalCentered{T} <: Distribution
+  sigmas::Matrix{T}
+end
+
+function rand(n::MatrixNormalCentered)
+  map(s->rand(Normal(0,s)), n.sigmas)
+end
+
+function pdf(n::MatrixNormalCentered, x::Matrix)
+  exp(logpdf(n,x))
+end
+
+function logpdf(n::MatrixNormalCentered, x::Matrix)
+  @assert size(n.sigmas) == size(x)
+  d = 0
+  for (x, s) in zip(x, n.sigmas)
+    isnan(x) && continue
+    d += logpdf(Normal(0, s), x)
+  end
+  d
+end
+
+import Base: ==, hash
+==(a::MatrixNormalCentered, b::MatrixNormalCentered) = a.sigmas == b.sigmas
+hash(a::MatrixNormalCentered) = hash(a.sigmas)
