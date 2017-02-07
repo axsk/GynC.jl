@@ -245,7 +245,9 @@ function samplepi0(nsamples)
   xs
 end
 
-function samplepi1(n, burnin=100_000)
+global BURNIN = 100_000
+
+function samplepi1(n, burnin=BURNIN)
   s = JLD.load("../data/0911/allsamples.jld")["samples"]
   xs = subsample(s, n, burnin)
 end
