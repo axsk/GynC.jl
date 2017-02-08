@@ -5,11 +5,11 @@ function gradientascent(f::Function, w0::Vector, n::Integer, h::Real, projection
 end
 
 function gradify(f, x)
-    out = GradientResult(x)
+    out = DiffBase.GradientResult(x)
     function df(x)
         ForwardDiff.gradient!(out, f, x)
         #ForwardDiff.value(out)
-        ForwardDiff.gradient(out)
+        DiffBase.gradient(out)
     end
 end
 
