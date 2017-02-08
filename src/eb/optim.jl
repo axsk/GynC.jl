@@ -1,44 +1,73 @@
+using ReverseDiff
 using NLopt
 
-count = 0
+" optimize f over the usimplex, using the orthogonal translation projection using ReverseDiff gradients "
+function optimsimplex(f, x0; nmax=1000)
+    evals = 0
+    function fs(x) 
+        evals += 1
+        #f(x/sum(x))
+        f(x-(sum(x)-1)/length(x))
+    end
+    dfs! = ReverseDiff.compile_gradient(fs, x0)
 
-# marginal loglikelihood function
-# L = sum{m} log(sum{k} L[k,m] * w[k])
-function L(w,l)
-	K, M = size(l)
-	outer = 0.
-	for m in 1:M
-		inner = 0.
-		for k in 1:K
-			inner += w[k] * l[k,m]
-		end
-		outer += log(inner)
-	end
-	outer
+    opt = Opt(:LD_MMA, length(x0))
+
+    lower_bounds!(opt, 0.)
+    upper_bounds!(opt, 1.)
+
+    min_objective!(opt, (x,g) -> (dfs!(g, x); fs(x)))
+
+    maxeval!(opt, nmax)
+    xtol_rel!(opt, 1e-6)
+    xtol_abs!(opt, 1e-9)
+
+    @time minf, minx, ret = optimize(opt, x0)
+    @show evals
+    @show minf
+    @show ret
+
+    @assert all(minx .>= 0) && all(minx .<= 1)
+    minx / sum(minx)
 end
 
-@assert isa(L(rand(100),rand(100,6)), Real)
+" optimize the models objective using dmple_obj for derivatives, with simplex inequality constraints "
+function optimmple(m, reg, w0; niter=100)
+    f  = GynC.mple_obj(m,reg)
+    df = GynC.dmple_obj(m,reg)
 
-algorithms = [:LN_COBYLA, :LN_BOBYQA, :LN_NEWUOA_BOUND, :LN_PRAXIS, :LN_NELDERMEAD, :LN_SBPLX]
+    function myf(x,g)
+        g[:] = -df(x) # - because of minimization
+        -f(x)
+    end
 
-function optim(l::Matrix, algorithm=:LN_COBYLA, crit=10)
-	K = size(l, 1)
-	opt = Opt(algorithm, K)
+    opt = Opt(:LD_MMA, length(w0))
+    lower_bounds!(opt, 0.)
+    upper_bounds!(opt, 1.)
 
-	lower_bounds!(opt, zeros(K))
-	upper_bounds!(opt, ones(K))
+    # inequalities for sum(x) == 1 
 
-	inequality_constraint!(opt, (x,g) -> sum(x) - 1)
+    function myconst(x, grad)
+        grad[:] = ones(grad)
+        sum(x)-1
+    end
 
-	#max_objective!(opt, (x,g) -> L(x,l) - abs2(sum(x) - 1) * 1e3)
-	max_objective!(opt, (x,g) -> L(x,l))
+    function myconst2(x,grad)
+        grad[:] = -ones(grad)
+        1-sum(x)
+    end
 
-	#ftol_abs!(opt, 1e-3)
-	#xtol_rel!(opt, 1e-3)
-	#xtol_abs!(opt, 1e-4)
-	#maxtime!(opt, crit)
-	maxeval!(opt, crit)
+    inequality_constraint!(opt, myconst, 1e-3)
+    inequality_constraint!(opt, myconst2, 1e-3)
 
-	optimize(opt, ones(K)/K)
+    min_objective!(opt, myf)
+
+    maxeval!(opt, niter)
+    #xtol_rel!(opt, 1e-6)
+    #xtol_abs!(opt, 1e-9)
+
+    minf, minx, ret = optimize(opt, w0)
+    @show minf
+    @show ret
+    minx
 end
-
