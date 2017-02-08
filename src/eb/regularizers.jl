@@ -88,13 +88,13 @@ end
 # hz(w) = \int p(z|w) log(p(z|w)) dz
 # with (z,wz) ~ p(z|w) importance sampling
 
-function hz(w::Vector, ys::Vector, zs::Vector, rho_std)
+function hz(w::AbstractVector, ys::AbstractVector, zs::AbstractVector, rho_std)
   L = likelihoodmat(zs, ys, rho_std)
   wz = repeatweights(w, zs)
   hz(w, L, wz)
 end
 
-function hz(wx::Vector, Lzx::Matrix, wz::Vector=wx)
+function hz(wx::AbstractVector, Lzx::AbstractMatrix, wz::AbstractVector=wx)
   @assert size(Lzx, 1) == length(wz)
   @assert size(Lzx, 2) == length(wx)
 
@@ -126,19 +126,19 @@ end
 
 function dhzloop(L,w,wz)
   rhoz = L*w
-  d = zeros(w)
+  d = ones(w)
 
   @inbounds for x in 1:length(w)
     for z in 1:length(wz)
       d[x] -= L[z,x] / rhoz[z] * wz[z] * log(rhoz[z])
     end
   end
-  d-1
+  d
 end
 
 function dhzloop2(L,w,wz)
   rhoz = L*w
-  d = fill!(similar(w), -1.0)
+  d = -ones(w)
 
   @inbounds for z in 1:length(wz)
     fact = wz[z] * log(rhoz[z]) / rhoz[z]
@@ -184,7 +184,7 @@ end
 
 # old gync compability layer
 
-const hz_simdays = 31
+const hz_simdays = 31 # does this belong here?
 const rho_e = MvNormal(model_measerrors)
 
 phi(x::Vector{Float64}) = forwardsol(x, 0:hz_simdays-1)[:, measuredinds] :: Matrix{Float64}
