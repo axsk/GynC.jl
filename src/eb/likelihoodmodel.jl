@@ -65,29 +65,52 @@ function syntheticmodel(xs::Vector, phi::Function, prior::Distribution, ndata::I
   LikelihoodModel(xs, ys, zs, datas, measerr)
 end
 
-function smoothdata(m::LikelihoodModel, dmult::Int,
-                    sigmak = KernelDensity.default_bandwidth(m.datas))
-  # resample data
-  sdatas = repmat(m.datas, dmult) + rand(Normal(0,sigmak), length(m.datas) * dmult);
 
-  # adjust model sigma
-  local smeaserr
-  if isa(m.measerr, Normal)
-    smeaserr = Normal(0, sqrt(m.measerr.σ^2 + sigmak^2))
-  else
-    warn("could not adjust the likelihoodmodel measurement error")
-    smeaserr = m.measerr
-  end
+### smooth the data for computation of dsmle
 
-  # new model
-  LikelihoodModel(m.xs, m.ys, m.zs, sdatas, smeaserr, m.zsampledistr)
+function smoothedmodel(m, mult)
+  smoothedmodel(m, mult, m.measerr)
 end
 
-function smoothdata(m::LikelihoodModel, dmult::Int, kernel::Distribution)
-  #sdatas = repmat(m.datas, dmult) + rand(kernel, length(m.datas) * dmult)
-  sdatas = map(d->d+rand(kernel), repmat(m.datas, dmult))
 
-  warn("did not adjust the likelihoodmodel meas error")
+function smoothedmodel(m, mult, measerr::Normal)
+  sigma = KernelDensity.default_bandwidth(m.datas)
 
-  LikelihoodModel(m.xs, m.ys, m.zs, sdatas, m.measerr, m.zsampledistr)
+  datas = repmat(m.datas, mult)
+  for i in eachindex(datas)
+    datas[i] += rand(Normal(sigma))
+  end
+  
+  measerr = Normal(0, sqrt(m.measerr.σ^2 + sigma^2))
+  LikelihoodModel(m.xs, m.ys, n.zs, datas, measerr, m.zsampledistr)
+end
+
+
+" constructs the DSMLE model by inflating the data by factor mult.
+adjusts the measurementerror for compensation"
+function smoothedmodel(m, mult, measerr::GynC.MatrixNormalCentered)
+  sigmas = defaultdatabandwith(m)
+  kernel = GynC.MatrixNormalCentered(sigmas)
+
+  datas = repmat(m.datas, mult)
+  for i in eachindex(datas)
+    datas[i] += rand(kernel)
+  end
+
+  sigmas = let s1 = m.measerr.sigmas, s2 = smoothkernel.sigmas
+    [sqrt(s1[i]^2 + s2[i]^2) for i in eachindex(s1)]
+  end
+  measerr = GynC.MatrixNormalCentered(sigmas)
+
+  LikelihoodModel(m.xs, m.ys, n.zs, datas, measerr, m.zsampledistr)
+end
+
+function defaultdatabandwith(m::LikelihoodModel)
+  datas = m.datas
+  sigmas = similar(datas[1])
+  for i in eachindex(sigmas)
+    points = filter(x->!isnan(x), [d[i] for d in datas])
+    sigmas[i] = KernelDensity.default_bandwidth(points)
+  end
+  sigmas
 end

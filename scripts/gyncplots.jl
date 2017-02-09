@@ -31,7 +31,7 @@ const kdenpoints = 300
 const mplegamma = 0.90
 const inverseweightsstd = 20
 
-isp2 = false
+isp2 = false # special colors? (something) for plot 2
 col = 1
 
 ### individual plot functions
@@ -44,7 +44,7 @@ global lastresult
 
 function gendata(nsamples, zmult, smoothmult)
   m    = gyncmodel(samplepi1(nsamples), zmult=zmult)
-  ms   = smoothedmodel(m, smoothmult)
+  ms   = GynC.smoothedmodel(m, smoothmult)
   muni = gyncmodel(vcat(samplepi0(nsamples), m.xs), zmult=0)
   m, ms, muni
 end
@@ -62,6 +62,7 @@ function computeweights(m, ms, muni, niter, mplegamma, h)
   @time ws["DS-MLE"] = GynC.em(ms, w0, niter);
 
   println("computing mple")
+  # do half with stepsize h and rest with h/10
   @time begin
     ws["MPLE"]  = GynC.mple(m, w0, round(Int,niter/2), mplegamma, h)
     ws["MPLE"]  = vcat(ws["MPLE"], GynC.mple(m, ws["MPLE"][end], round(Int,niter/2), mplegamma, h/10))
@@ -213,19 +214,6 @@ function gyncmodel(xs; zmult = 0)
   m = GynC.LikelihoodModel(xs, ys, zs, datas, err);
 end
 
-" smooth the data of the given gync model "
-function smoothedmodel(m, smoothmult)
-  sigmas = [1*KernelDensity.default_bandwidth(filter(x->!isnan(x),[d[i,j] for d in datas])) for i=1:31, j=1:4]
-  smoothkernel = GynC.MatrixNormalCentered(sigmas)
-
-  ms = GynC.smoothdata(m, smoothmult, smoothkernel);
-
-  sigmanew = sqrt.(m.measerr.sigmas .^ 2 + smoothkernel.sigmas .^ 2)
-  ms.measerr = GynC.MatrixNormalCentered(sigmanew)
-  info("adjusted meas error")
-
-  ms
-end
 
 " compute the bayes posterior for the given model, data and prior "
 function bayesposterior(m, data, wprior)
