@@ -59,7 +59,7 @@ end
 
 function dhzloop(L,w,wz)
   rhoz = L*w
-  d = ones(w)
+  d = -ones(w)
 
   @inbounds for x in 1:length(w)
     for z in 1:length(wz)
