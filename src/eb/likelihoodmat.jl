@@ -26,7 +26,7 @@ end
 function likelihoodmat_nanfast(xs,ys,d)
   A = hcat([vec(x ./ d.sigmas) for x in xs]...)
   B = hcat([vec(y ./ d.sigmas) for y in ys]...)
-  exp(-sqeucdist_nan(A,B))
+  exp(-sqeucdist_nan(A,B)/2) / (sqrt((2*pi)^length(d.sigmas)) * prod(d.sigmas))
 end
 
 
