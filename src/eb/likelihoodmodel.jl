@@ -97,17 +97,15 @@ function smoothedmodel(m, mult, measerr::GynC.MatrixNormalCentered)
     datas[i] += rand(kernel)
   end
 
-  sigmas = let s1 = m.measerr.sigmas, s2 = smoothkernel.sigmas
-    [sqrt(s1[i]^2 + s2[i]^2) for i in eachindex(s1)]
-  end
+  sigmas = sqrt.(m.measerr.sigmas.^2 + kernel.sigmas.^2)
   measerr = GynC.MatrixNormalCentered(sigmas)
 
-  LikelihoodModel(m.xs, m.ys, n.zs, datas, measerr, m.zsampledistr)
+  LikelihoodModel(m.xs, m.ys, m.zs, datas, measerr, m.zsampledistr)
 end
 
 function defaultdatabandwith(m::LikelihoodModel)
   datas = m.datas
-  sigmas = similar(datas[1])
+  sigmas = similar(m.measerr.sigmas)
   for i in eachindex(sigmas)
     points = filter(x->!isnan(x), [d[i] for d in datas])
     sigmas[i] = KernelDensity.default_bandwidth(points)
