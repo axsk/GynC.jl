@@ -9,16 +9,16 @@ export emiteration!, euler_A!, euler_phih!
 export gradientascent
 export Hz, logLw, HKL
 
-include("eb/projectsimplex.jl")
-include("eb/weightedsampling.jl")
+include("projectsimplex.jl")
+include("weightedsampling.jl")
 
-include("eb/em.jl")
+include("em.jl")
 
-include("eb/likelihoodmodel.jl")
-include("eb/likelihoodmat.jl")
+include("likelihoodmodel.jl")
+include("likelihoodmat.jl")
 
-include("eb/regularizers.jl")
+include("regularizers.jl")
 
-include("eb/gradientascent.jl")
-include("eb/optim.jl")
-include("eb/linesearch.jl")
+include("gradientascent.jl")
+include("optim.jl")
+include("linesearch.jl")
