@@ -44,8 +44,34 @@ function dhz(w, ys, zs, rho)
   L = likelihoodmat(zs,ys,rho)
   wz = repeatweights(w,zs)
 
-  dhzloop2(L,w,wz)
+  d=dhzloop2(L,w,wz)
+  any(isnan(d)) && warn("encountered NaN in dhz() computation")
+  d
 end
+
+function dhzdiscr(w,ys,zs,rho)
+  L = likelihoodmat(zs,ys,rho)
+  wz = repeatweights(w,zs)
+  zmult = length(wz) / length(w)
+  lw = length(w)
+
+  rhoz = L*w
+
+  d = zeros(w)
+  for k = 1:length(w)
+    for i = 1:length(zs)
+      d[k] -= L[i,k] / rhoz[i] * wz[i]
+      #=if i % length(w) == k % length(w)
+        d[k] -= log(rhoz[i]) / zmult
+      end=#
+    end
+    for m = 0:zmult-1
+      d[k] -= log(rhoz[k+lw*m]) / zmult
+    end
+  end
+  d
+end
+
 
 # d/dw_k hz(w) = - \int p(z|w) / p(z|w) * p(z|x) * log(p(z|w)) dz - 1
 # using (z,wz) ~ p(z|w) importance sampling / monte carlo integration
