@@ -44,7 +44,7 @@ proj(x) = GynC.projectsimplex(x)
 function linesearch(m; n=3, reg=0.9)
   local x = fill(1/length(m.xs), length(m.xs))
 
-  x=normalize(rand(length(m.xs)),1)
+  x=Base.normalize(rand(length(m.xs)),1)
   f=GynC.mple_obj(m, reg) # maximization objective
   df=GynC.dmple_obj(m, reg)
 

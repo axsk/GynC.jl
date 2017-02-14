@@ -52,7 +52,7 @@ end
 function dhzdiscr(w,ys,zs,rho)
   L = likelihoodmat(zs,ys,rho)
   wz = repeatweights(w,zs)
-  zmult = length(wz) / length(w)
+  zmult = Int(length(wz) / length(w))
   lw = length(w)
 
   rhoz = L*w
