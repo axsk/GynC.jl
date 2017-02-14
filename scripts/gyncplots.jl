@@ -235,10 +235,28 @@ end
 
 global BURNIN = 100_000
 
-function samplepi1(n, burnin=BURNIN)
-  s = JLD.load("../data/0911/allsamples.jld")["samples"]
-  xs = subsample(s, n, burnin)
+function loadallsamples()
+  allsamplepath = "/data/numerik/bzfsikor/gync/0911/allsamples.jld"
+  JLD.load(allsamplepath, "samples") :: Vector{Matrix{Float64}}
 end
+
+
+function samplepi1(n, burnin=BURNIN)
+  xs = subsample(loadallsamples(), n, burnin)
+end
+
+function samplepi1rnd(n, burnin=BURNIN)
+  s = loadallsamples()
+  nsamplings = length(s)
+  res = Vector{Vector{Float64}}()
+
+  for i = 1:n
+    sampling = view(s, i%nsamplings+1)
+    push!(res, sampling[rand((BURNIN+1):length(sampling))])
+  end
+  res
+end
+
 
 " given a vector of samplings, pickout `n` samples after the first `burnin` iters "
 function subsample(samplings::Vector{Matrix{Float64}}, n::Int, burnin::Int)
@@ -260,9 +278,9 @@ function inverseweights(xs::Vector)
   normalize!(w, 1)
 end
 
-function uniformweights(xs::Vector)
-  ones(length(xs)) / length(xs)
-end
+uniformweights(xs::Vector) = uniformweights(length(xs))
+uniformweights(n::Int)     = fill(1/n, n)
+
 
 " compute the kde evaluations at 'evals', given the points 'data'.
  for high dimensions adjust stdmult to tweak the covariance "
