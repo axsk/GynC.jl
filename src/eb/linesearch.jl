@@ -5,35 +5,62 @@ using LineSearches
 #f=GynC.mple_obj(m, .5)
 #df=GynC.dmple_obj(m .5)
 
+const SIMPLEXMINDIST = 1e-12
+
 " do a linesearch for given f, df from x in direction of the gradient orthogonally projected onto the simplex "
 function simplexlinesearch(f,df,x, alpha0 = 1, relboundarystep=0)
+  # start in simplex
+  x = proj(x) 
+
+  # restrict f to simplex evaluations
+  pf(x) = f(proj(x))
+
+  # restrict df to simplex interior evaluations
+  pdf(x) = df(projsimplexint(x))
+
   # initialisation
-  lsdf = LineSearches.DifferentiableFunction(f,(x,g)->(g[:]=df(x)))
+  lsdf = LineSearches.DifferentiableFunction(pf,(x,g)->(g[:]=pdf(x)))
 
   # allocation and initial evaluation
-  tx = copy(x)
   p = similar(x)
   fx = lsdf.fg!(x,p)
 
   # search direction and slope
   phi = -projsimplextangent(p)
-  #phi = -p
   @show dphi = dot(phi, p)
+
+  # when on/near border ignore directions outwards
+  for i in eachindex(phi)
+    if phi[i] < 0 && x[i] <= SIMPLEXMINDIST
+      phi[i] = 0
+    end
+  end
 
   # maximally move to the border: x + a phi = 0
   if relboundarystep > 0
-    @show alpha0 = min(minimum(-x[i] / phi[i] for i in 1:length(x) if phi[i] <= 0), alpha0) * relboundarystep
+    @show alpha0 = min(minimum(-x[i] / phi[i] for i in 1:length(x) if phi[i] < 0), alpha0) * relboundarystep
   end
 
   # initial tape
   lsr = LineSearchResults(eltype(x))
   push!(lsr, 0.0, fx, dphi)
 
-  @show alpha, _, _ = backtracking!(lsdf, x, phi, tx, p, lsr, alpha0, false, 1e-4)
+  tx = copy(x)
+  @show alpha, _, _ = backtracking!(lsdf, x, phi, tx, p, lsr, alpha0)
   @show lsr
 
-  x + alpha * phi
+  proj(x + alpha * phi)
 end
+
+function projsimplexint(x)
+  y = GynC.projectsimplex(x)
+  i0 = find(x->x==0, y)
+  @show length(i0)
+  y[i0] .+= SIMPLEXMINDIST
+  y / sum(y)
+end
+
+
 
 function projsimplextangent(x)
   x - sum(x) / length(x)
