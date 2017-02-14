@@ -23,10 +23,37 @@ function likelihoodmat_par(zs, ys, d::Distribution)
   Array(x)
 end
 
+using Distances
+
+# fallback for other distributions
 function likelihoodmat_nanfast(xs,ys,d)
+  pdf(d, [x-y for x in xs, y in ys])
+end
+
+function likelihoodmat_nanfast(xs,ys,d::MatrixNormalCentered)
   A = hcat([vec(x ./ d.sigmas) for x in xs]...)
   B = hcat([vec(y ./ d.sigmas) for y in ys]...)
-  exp(-sqeucdist_nan(A,B)/2) / (sqrt((2*pi)^length(d.sigmas)) * prod(d.sigmas))
+  sqeucdists = sqeucdist_nan(A,B)
+  sqeucdists = sqeucdists - minimum(sqeucdists)
+  #@show extrema(sqeucdists)
+
+  svec = vec(d.sigmas)
+  normalization = similar(sqeucdists)
+
+  Amask = !isnan(A)
+  Bmask = !isnan(B)
+
+  for j = 1:size(B,2)
+    for i = 1:size(A,2)
+      ijmask = Amask[:,i] .* Bmask[:,j]
+      normalization[i,j] = prod(svec[ijmask]) * sqrt(2*pi)^sum(ijmask)
+    end
+  end
+
+  #@show normalization = normalization / maximum(normalization)
+
+  #exp(-sqeucdists/2) / (sqrt((2*pi)^length(d.sigmas)) * prod(d.sigmas))
+  exp(-sqeucdists/2) ./ normalization
 end
 
 
@@ -56,8 +83,7 @@ function sqeucdist_nan(A,B)
   @inbounds for j = 1:size(B,2)
     for i = 1:size(A,2)
       v = sa2[i] + sb2[j] - 2 * r[i,j] # binomial formula
-      v = v - ca[i,j] # correct the terms which shouldnt count due to nan
-      r[i,j] = v
+      r[i,j] = v - ca[i,j] # correct the terms which shouldnt count due to nan
     end
   end
   r
