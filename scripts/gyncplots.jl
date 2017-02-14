@@ -43,9 +43,9 @@ test() = (srand(1); paperplot(nsamples=50, niter=20, h=1, zmult=5, smoothmult=5)
 global lastresult
 
 function gendata(nsamples, zmult, smoothmult)
-  m    = gyncmodel(samplepi1(nsamples), zmult=zmult)
+  m    = gyncmodel(samplepi1(nsamples), zmult=zmult, sigma=sigma)
   ms   = GynC.smoothedmodel(m, smoothmult)
-  muni = gyncmodel(vcat(samplepi0(nsamples), m.xs), zmult=0)
+  muni = gyncmodel(vcat(samplepi0(nsamples), m.xs), zmult=0, sigma=sigma)
   m, ms, muni
 end
 
@@ -196,23 +196,8 @@ end
 
 
 ### model generation
+import GynC.gyncmodel
 
-" generate a gync likelihoodmodel "
-function gyncmodel(xs; zmult = 0)
-  phi(x) = GynC.forwardsol(x)[:,GynC.measuredinds]
-  ys = phi.(xs);
-
-  nonaninds = find(x->!any(isnan(x)), ys)
-
-  xs = xs[nonaninds]
-  ys = ys[nonaninds]
-
-  err = GynC.MatrixNormalCentered(repmat(sigma*GynC.model_measerrors' * 10, 31)) # 10 hotfix for static scaling in model.jl
-
-  zs = map(y->y+rand(err), repmat(ys, zmult));
-
-  m = GynC.LikelihoodModel(xs, ys, zs, datas, err);
-end
 
 
 " compute the bayes posterior for the given model, data and prior "
