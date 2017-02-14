@@ -251,8 +251,9 @@ function samplepi1rnd(n, burnin=BURNIN)
   res = Vector{Vector{Float64}}()
 
   for i = 1:n
-    sampling = view(s, i%nsamplings+1)
-    push!(res, sampling[rand((BURNIN+1):length(sampling))])
+    sampling = s[i%nsamplings+1]
+    j = rand((BURNIN+1):size(sampling,1))
+    push!(res, sampling[j, :])
   end
   res
 end

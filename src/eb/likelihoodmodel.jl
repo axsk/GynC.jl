@@ -82,7 +82,7 @@ function smoothedmodel(m, mult, measerr::Normal)
   end
   
   measerr = Normal(0, sqrt(m.measerr.σ^2 + sigma^2))
-  LikelihoodModel(m.xs, m.ys, n.zs, datas, measerr, m.zsampledistr)
+  LikelihoodModel(m.xs, m.ys, m.zs, datas, measerr, m.zsampledistr)
 end
 
 
