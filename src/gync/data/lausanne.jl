@@ -25,9 +25,9 @@ function lausannedata(caseid::Int)
   end
   p
 end
-
+#=
 function alldatas(; minmeas=10)
   datas = vcat([Lausanne(i).data for i=1:40], [Pfizer(i).data for i=1:13])
   datas = filter(d->length(d) - sum(isnan(d)) > 20, datas)
 end
-
+=#

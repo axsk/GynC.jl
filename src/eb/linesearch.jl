@@ -60,8 +60,6 @@ function projsimplexint(x)
   y / sum(y)
 end
 
-
-
 function projsimplextangent(x)
   x - sum(x) / length(x)
 end

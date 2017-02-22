@@ -42,10 +42,13 @@ test() = (srand(1); paperplot(nsamples=50, niter=20, h=1, zmult=5, smoothmult=5)
 
 global lastresult
 
+
+import GynC: samplepi1, samplepi0
+
 function gendata(nsamples, zmult, smoothmult)
-  m    = gyncmodel(samplepi1(nsamples), zmult=zmult, sigma=sigma)
+  m    = gyncmodel(samplepi1(nsamples), datas, zmult=zmult, sigma=sigma)
   ms   = GynC.smoothedmodel(m, smoothmult)
-  muni = gyncmodel(vcat(samplepi0(nsamples), m.xs), zmult=0, sigma=sigma)
+  muni = gyncmodel(vcat(samplepi0(nsamples, trajts), m.xs), datas, zmult=0, sigma=sigma)
   m, ms, muni
 end
 
@@ -208,55 +211,9 @@ end
 
 
 ### utility function for handling samples, data and weights
-function samplepi0(nsamples)
-  yprior = GynC.priory0(1)
-  xs = Vector{Float64}[]
-  while length(xs) < nsamples
-    x = vcat(GynC.refparms.* rand(82) * 5, rand(yprior), 30)
-    !any(isnan(GynC.forwardsol(x, trajts))) && push!(xs, x)
-  end
-  xs
-end
-
-global BURNIN = 100_000
-
-function loadallsamples()
-  allsamplepath = "/data/numerik/bzfsikor/gync/0911/allsamples.jld"
-  JLD.load(allsamplepath, "samples") :: Vector{Matrix{Float64}}
-end
 
 
-function samplepi1(n, burnin=BURNIN)
-  xs = subsample(loadallsamples(), n, burnin)
-end
 
-function samplepi1rnd(n, burnin=BURNIN)
-  s = loadallsamples()
-  nsamplings = length(s)
-  res = Vector{Vector{Float64}}()
-
-  for i = 1:n
-    sampling = s[i%nsamplings+1]
-    j = rand((BURNIN+1):size(sampling,1))
-    push!(res, sampling[j, :])
-  end
-  res
-end
-
-
-" given a vector of samplings, pickout `n` samples after the first `burnin` iters "
-function subsample(samplings::Vector{Matrix{Float64}}, n::Int, burnin::Int)
-  res = Vector{Vector{Float64}}()
-  nsamplings = length(samplings)
-  for sampling in samplings
-    nsamples = size(sampling, 1)
-    step = floor(Int,(nsamples - burnin) / n * nsamplings)
-    for i = burnin+1:step:nsamples
-      push!(res, sampling[i,:])
-    end
-  end
-  res
-end
 
 " given some sampling, compute the weigts from the inverse of the kde to obtain a weighted sampling corresponding to the uniform distribution" 
 function inverseweights(xs::Vector)
@@ -278,11 +235,4 @@ function mykde(data, evals, stdmult)
   end
 end
 
-" load all available data "
-function alldatas(; minmeas=20)
-  datas = vcat([Lausanne(i).data for i=1:40])#, [GynC.Pfizer(i).data for i=1:13])
-  datas = filter(d->length(d) - sum(isnan(d)) > minmeas, datas)
-end
-
-global datas = alldatas();
-
+global datas = GynC.alldatas();

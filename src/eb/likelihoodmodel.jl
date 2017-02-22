@@ -88,7 +88,7 @@ end
 
 " constructs the DSMLE model by inflating the data by factor mult.
 adjusts the measurementerror for compensation"
-function smoothedmodel(m, mult, measerr::GynC.MatrixNormalCentered)
+function smoothedmodel{T}(m, mult, measerr::GynC.MatrixNormalCentered{T})
   sigmas = defaultdatabandwith(m)
   kernel = GynC.MatrixNormalCentered(sigmas)
 
