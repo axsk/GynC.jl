@@ -76,9 +76,3 @@ function subsample(samplings::Vector{Matrix{Float64}}, n::Int, burnin::Int)
   res[1:n]
 end
 
-
-" load `all` available data "
-function alldatas(; minmeas=20)
-  datas = vcat([Lausanne(i).data for i=1:40])#, [GynC.Pfizer(i).data for i=1:13])
-  datas = filter(d->length(d) - sum(isnan(d)) > minmeas, datas)
-end

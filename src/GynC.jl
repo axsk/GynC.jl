@@ -16,8 +16,7 @@ export plotsolutions, plotdata
 export WeightedChain
 
 import DataFrames
-include("gync/data/lausanne.jl")
-include("gync/data/pfizer.jl")
+include("gync/data.jl")
 
 using Distributions
 import Sundials
