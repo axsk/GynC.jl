@@ -1,22 +1,104 @@
 using LineSearches
 
-#using GynC
+LS_SIMPLEXMINDIST = 1e-9
+LS_RELBNDSTEP = 1 # relative stepsize to boundary (0 = disable check)
+LS_GRADINT = false # evaluate gradient only in the interior
 
-#f=GynC.mple_obj(m, .5)
-#df=GynC.dmple_obj(m .5)
+# the projection to use
+proj(x) = GynC.projectsimplex(x)
 
-const SIMPLEXMINDIST = 1e-12
+#= wrong, since sum(phi) != 0
+# when on/near border ignore directions outwards
+function removeoutward(x, phi)
+  phi = copy(phi)
+  removes = 0
+  for i in eachindex(phi)
+    if phi[i] < 0 && x[i] <= LS_SIMPLEXMINDIST
+      phi[i] = 0
+      removes += 1
+    end
+  end
+  @show removes
+  phi
+end
+=#
 
-" do a linesearch for given f, df from x in direction of the gradient orthogonally projected onto the simplex "
-function simplexlinesearch(f,df,x, alpha0 = 1, relboundarystep=0)
+#= projection can move to new boundarys?
+function removeoutward(x, phi)
+  phi=copy(phi)
+  n = length(phi)
+  a = 1 / sqrt( n-1+(n-1)^2)
+  b = a * (1-n)
+  N = fill(a, n)
+
+  I = find(i->(phi[i] < 0 && x[i] <= LS_SIMPLEXMINDIST), 1:length(phi))
+  for i in I
+    n[i] = b
+    phi  -= dot(phi, n) * n
+    n[i] = a
+  end
+  @show sum(phi)
+  phi
+end
+=#
+
+function removeoutward(x,phi)
+  scale = Inf
+
+  for i = 1:length(phi)
+    if (phi[i] < 0 && x[i] > LS_SIMPLEXMINDIST)
+      scale = min(scale, -x[i] / phi[i])
+    elseif (phi[i] > 0 && x[i] < 1)
+      scale = min(scale, (1-x[i]) / phi[i])
+    end
+  end
+
+  @show scale
+  
+  scale = 1/1000
+
+  (proj(x + scale*phi) - proj(x)) / scale
+end
+
+# stepsize to arrive at border: x + a phi = 0
+function alphamaxtoborder(x, phi)
+  alpha0=Inf
+  for i in 1:length(x)
+    if phi[i] < 0 && x[i] > LS_SIMPLEXMINDIST
+      alpha0 = min(alpha0, -x[i] / phi[i])
+    end
+  end
+  alpha0
+end
+
+function projsimplexint(x)
+  y = proj(x)
+  i0 = find(x->x==0, y)
+  @show length(i0)
+  y[i0] .+= SIMPLEXMINDIST
+  y / sum(y)
+end
+
+projsimplextangent(x) = x - (sum(x) / length(x))
+  
+
+" do a minimizing linesearch for given f, df from x in direction of the gradient orthogonally projected onto the simplex "
+function simplexlinesearch(f,df,x, alpha0 = 1)
   # start in simplex
-  x = proj(x) 
+  #x = proj(x) 
+  
+  #@assert all(abs(proj(x) - x) .< 1e-16)
 
   # restrict f to simplex evaluations
   pf(x) = f(proj(x))
+  #pf(x) = f(x)
 
-  # restrict df to simplex interior evaluations
-  pdf(x) = df(projsimplexint(x))
+  function pdf(x) 
+    # restrict df to simplex interior evaluations
+    x = LS_GRADINT ? projsimplexint(x) : proj(x)
+    df(x)
+  end
+  #pdf(x) = df(x)
 
   # initialisation
   lsdf = LineSearches.DifferentiableFunction(pf,(x,g)->(g[:]=pdf(x)))
@@ -24,83 +106,76 @@ function simplexlinesearch(f,df,x, alpha0 = 1, relboundarystep=0)
   # allocation and initial evaluation
   p = similar(x)
   fx = lsdf.fg!(x,p)
+  @show p
 
   # search direction and slope
-  phi = -projsimplextangent(p)
-  @show dphi = dot(phi, p)
+  phi = -p # move in opposite direction of gradient
+  phi = projsimplextangent(phi) # project onto tangent
+  phi = removeoutward(x, phi) # remove outward facing on bnd
+  @show sum(phi)
 
-  # when on/near border ignore directions outwards
-  for i in eachindex(phi)
-    if phi[i] < 0 && x[i] <= SIMPLEXMINDIST
-      phi[i] = 0
-    end
-  end
+  # search slope
+  #@show phi, p
+
+  @show dphi = dot(phi, p)
+  (abs(dphi) <= abs(dot(-p, p))) || warn("dphi larger then df")
 
   # maximally move to the border: x + a phi = 0
-  if relboundarystep > 0
-    @show alpha0 = min(minimum(-x[i] / phi[i] for i in 1:length(x) if phi[i] < 0), alpha0) * relboundarystep
+  if LS_RELBNDSTEP > 0
+    alpha0 = min(alpha0, alphamaxtoborder(x, phi) * LS_RELBNDSTEP)
   end
 
-  # initial tape
+  @show sort(x )[1:5]
+  @show sort(x +alpha0*phi)[1:5]
+
+  #@show maxstep = norm(alpha0 * phi)
+  #@show maxcomp = maximum(abs(alpha0 * phi))
+
+  # initialize tape
   lsr = LineSearchResults(eltype(x))
   push!(lsr, 0.0, fx, dphi)
 
   tx = copy(x)
   @show alpha, _, _ = backtracking!(lsdf, x, phi, tx, p, lsr, alpha0)
-  @show lsr
+  #@show lsr
+
+  #@show alpha
+  #@show sum(x+alpha0*phi .<= 1e-8)
 
   proj(x + alpha * phi)
+  #x + (alpha * phi)
 end
 
-function projsimplexint(x)
-  y = GynC.projectsimplex(x)
-  i0 = find(x->x==0, y)
-  @show length(i0)
-  y[i0] .+= SIMPLEXMINDIST
-  y / sum(y)
-end
 
-function projsimplextangent(x)
-  x - sum(x) / length(x)
-end
+uniformweights(n) = fill(1/n, n)
+randomweights(n)  = normalize!(rand(n), 1)
 
-proj(x) = GynC.projectsimplex(x)
+global currentx
 
-function linesearch(m; n=3, reg=0.9)
-  local x = fill(1/length(m.xs), length(m.xs))
+function linesearch(m; n=1, reg=0.9, w0 = randomweights(length(m.xs)))
+  x = Base.normalize(w0, 1)
 
-  x=Base.normalize(rand(length(m.xs)),1)
+  #x=Base.normalize(rand(length(m.xs)),1)
   f=GynC.mple_obj(m, reg) # maximization objective
   df=GynC.dmple_obj(m, reg)
 
-  pfm(x) = - f(proj(x)) # proj f to minimize
+  nf(x) = - f(x) # proj f to minimize
 
-  dfm(x) = - df(x)
+  dnf(x) = - df(x)
 
-  @show pfm(x)
+  @show nf(x)
 
   for i = 1:n
-    x = simplexlinesearch(pfm, dfm, x)
-    nz = sum(x.<0)
-    no = sum(x.>1)
-    s  = sum(x)
-    @show nz, no, s
-    @show pfm(x)
-    #@show x[1], proj(x)[1]
-    #x = proj(x)
-    #@show x[1]
-    #@assert proj(x) == x
-    #@show sum(x.==0)
-    #@show sum(proj(x).==0)
+    x = simplexlinesearch(nf, dnf, x)
+    currentx = x
+    #sum(x.<0) == 0 || warn("encoutered negative weight $(minimum(x))")
+    #@assert sum(x.>1) == 0
+    #@assert abs(sum(x) - 1) < 1e-5
 
-    #show pfm(x) + f(x)
-    #show pfm(x) + f(proj(x))
-    #@show sum(x .<= 1e-7)
-    #@show sort(x)[1:5]
-    #@show sort(x)[end-4:end]
+    @show sum(x.<=LS_SIMPLEXMINDIST)
+    @show nf(x)
   end
 
-  #@show pfm(x)
   x
 end
 

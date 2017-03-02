@@ -30,6 +30,9 @@ end
 function hz(wx::AbstractVector, Lzx::AbstractMatrix, wz::AbstractVector=wx)
   @assert size(Lzx, 1) == length(wz)
   @assert size(Lzx, 2) == length(wx)
+  @assert all(isfinite(wx))
+  @assert all(isfinite(Lzx))
+  @assert all(isfinite(wz))
 
   rhoz = Lzx * wx           # \Int L(z|x) * pi(x) dx_j
   l = 0
@@ -40,7 +43,11 @@ function hz(wx::AbstractVector, Lzx::AbstractMatrix, wz::AbstractVector=wx)
   l
 end
 
-function dhz(w, ys, zs, rho)
+const DHZCONT = false
+
+dhz(w,ys,zs,rho) = DHZCONT ? dhzcont(w,ys,zs,rho) : dhzdiscr(w,ys,zs,rho)
+
+function dhzcont(w, ys, zs, rho)
   L = likelihoodmat(zs,ys,rho)
   wz = repeatweights(w,zs)
 
@@ -60,13 +67,17 @@ function dhzdiscr(w,ys,zs,rho)
   d = zeros(w)
   for k = 1:length(w)
     for i = 1:length(zs)
-      d[k] -= L[i,k] / rhoz[i] * wz[i]
+      t = L[i,k] / rhoz[i] * wz[i]
+      isnan(t) && (warn("encoutered nan in dhzdiscr (1)"); continue)
+      d[k] -= t
       #=if i % length(w) == k % length(w)
         d[k] -= log(rhoz[i]) / zmult
       end=#
     end
     for m = 0:zmult-1
-      d[k] -= log(rhoz[k+lw*m]) / zmult
+      t = log(rhoz[k+lw*m]) / zmult
+      isnan(t) && (warn("encoutered nan in dhzdiscr (2)"); continue)
+      d[k] -= t
     end
   end
   d
