@@ -5,7 +5,9 @@ const sampledinds  = deleteat!(collect(1:103), hillinds)
 
 const refparms    = refallparms[sampledinds]
 
-const model_measerrors = [120, 10, 400, 15.] / 10 # corresponding to 10% of ~ max. values
+const model_measerrors = [120, 10, 400, 15.] / 10 # corresponding to 10% of ~ max. values # TODO: remove this
+
+const model_measmagnitude = [120, 10, 400, 15.] 
 
 #const defaultpropvar = include("data/proposals/allcovs.jl") * 2.38^2 / 115
 # shouldnt the squares be taken after the log?
@@ -146,18 +148,16 @@ function llh(c::Config, x::Vector, periods::Int=2)
   for p = 0:periods-1
     periodtimes = (1:ndata) + ndata * p
     yperiod = y[periodtimes, :]
-    l += llh_measerror(data(c) - yperiod)
+    l += llh_measerror(c, data(c) - yperiod)
   end
   
   l
 end
 
 # NOTE: if feed with NaNs only, returns 0, i.e. p=1
-function llh_measerror(error::Matrix)
-  scaled = error ./ model_measerrors'
+function llh_measerror(c::Config, error::Matrix)
+  scaled = error ./ (model_measmagnitude' * c.sigma_rho)
   nonnan = !isnan(scaled)
-  #!any(nonnan) && return -Inf
-  l=-sumabs2(scaled[nonnan])
+  any(nonnan) || return -Inf
+  -sumabs2(scaled[nonnan]) / 2
 end
-
-
