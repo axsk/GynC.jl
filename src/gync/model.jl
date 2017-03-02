@@ -111,7 +111,7 @@ function logprior(c::Config, x::Vector)
   for i in 1:82
     l += Distributions.logpdf(c.priorparms[i], x[i])
   end
-  l += Distributions.logpdf(Distributions.Normal(28, 2), period(x))
+  l += Distributions.logpdf(Distributions.Normal(28.9, 3.4), period(x))
 end
 
 function logpost(c::Config, x::Vector)
