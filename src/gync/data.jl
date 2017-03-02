@@ -1,3 +1,5 @@
+allpatients() = [Patient(d, "p$i") for (i,d) in enumerate(alldatas())]
+
 function alldatas(; minmeas=20)
   datas = vcat(lausannedata(), pfizerdata())
   datas = filter(d->length(d) - sum(isnan(d)) >= minmeas, datas)
