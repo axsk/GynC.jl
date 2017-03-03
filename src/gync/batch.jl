@@ -18,11 +18,13 @@ function batch(cs::Vector{Config}, iters::Vector{Int};
       rmprocs(procs)
     end
   end
+  res
 end
 
 
 " Sample from `c::Config` and save result for all reached iterations in `iters` to `path` "
 function batch(c::Config, iters::Vector{Int}, path::AbstractString; overwrite=false)
+  println("$(now()) - starting batch for $path")
   s = Sampling(c)
   !overwrite && isfile(path) && (s = load(path))
   thin = c.thin
@@ -34,4 +36,5 @@ function batch(c::Config, iters::Vector{Int}, path::AbstractString; overwrite=fa
     save(path, s)
   end
   s
+  println("$(now()) - finished batch for $path")
 end
