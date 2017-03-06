@@ -30,16 +30,14 @@ function likelihoodmat_nanfast(xs,ys,d)
   pdf(d, [x-y for x in xs, y in ys])
 end
 
-function likelihoodmat_nanfast(xs,ys,d::MatrixNormalCentered)
+function likelihoodmat_nanfast(xs,ys,d::MatrixNormalCentered; renormalize=true)
   A = hcat([vec(x ./ d.sigmas) for x in xs]...)
   B = hcat([vec(y ./ d.sigmas) for y in ys]...)
   sqeucdists = sqeucdist_nan(A,B)
-  sqeucdists = sqeucdists - minimum(sqeucdists)
-  #@show extrema(sqeucdists)
 
+  # construct gaussian normalization factor dependent on the count of measurements 
   svec = vec(d.sigmas)
   normalization = similar(sqeucdists)
-
   Amask = !isnan(A)
   Bmask = !isnan(B)
 
@@ -50,13 +48,16 @@ function likelihoodmat_nanfast(xs,ys,d::MatrixNormalCentered)
     end
   end
 
-  #@show normalization = normalization / maximum(normalization)
+  if renormalize
+    sqeucdists = sqeucdists - minimum(sqeucdists)
+    normalization = normalization / maximum(normalization)
+  end
 
-  #exp(-sqeucdists/2) / (sqrt((2*pi)^length(d.sigmas)) * prod(d.sigmas))
   exp(-sqeucdists/2) ./ normalization
 end
 
-
+" compute squared eucliden distances between cols of A and B.
+NaN stable, meaning that NaN entries get ignored "
 function sqeucdist_nan(A,B)
   An = isnan(A)
   Bn = isnan(B)
