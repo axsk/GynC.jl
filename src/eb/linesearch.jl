@@ -1,6 +1,6 @@
 using LineSearches
 
-LS_SIMPLEXMINDIST = 1e-9
+LS_SIMPLEXMINDIST = 1e-6
 LS_RELBNDSTEP = 1 # relative stepsize to boundary (0 = disable check)
 LS_GRADINT = false # evaluate gradient only in the interior
 
@@ -54,8 +54,6 @@ function removeoutward(x,phi)
   end
 
   @show scale
-  
-  scale = 1/1000
 
   (proj(x + scale*phi) - proj(x)) / scale
 end
@@ -106,13 +104,15 @@ function simplexlinesearch(f,df,x, alpha0 = 1)
   # allocation and initial evaluation
   p = similar(x)
   fx = lsdf.fg!(x,p)
-  @show p
+  @assert all(isfinite(p))
+  
+  #@show p
 
   # search direction and slope
   phi = -p # move in opposite direction of gradient
   phi = projsimplextangent(phi) # project onto tangent
   phi = removeoutward(x, phi) # remove outward facing on bnd
-  @show sum(phi)
+  @show norm(phi), maximum(phi)
 
   # search slope
   #@show phi, p
@@ -125,8 +125,8 @@ function simplexlinesearch(f,df,x, alpha0 = 1)
     alpha0 = min(alpha0, alphamaxtoborder(x, phi) * LS_RELBNDSTEP)
   end
 
-  @show sort(x )[1:5]
-  @show sort(x +alpha0*phi)[1:5]
+  #@show sort(x )[1:5]
+  #@show sort(x +alpha0*phi)[1:5]
 
   #@show maxstep = norm(alpha0 * phi)
   #@show maxcomp = maximum(abs(alpha0 * phi))
@@ -152,7 +152,15 @@ randomweights(n)  = normalize!(rand(n), 1)
 
 global currentx
 
-function linesearch(m; n=1, reg=0.9, w0 = randomweights(length(m.xs)))
+function linesearch(m; n=1, reg=0.9, w0 = :uniform)
+  
+  if w0 == :random
+    w0 = randomweights(length(m.xs))
+  elseif w0 == :uniform
+    w0 = uniformweights(length(m.xs))
+  end
+
+
   x = Base.normalize(w0, 1)
 
   #x=Base.normalize(rand(length(m.xs)),1)
@@ -166,14 +174,19 @@ function linesearch(m; n=1, reg=0.9, w0 = randomweights(length(m.xs)))
   @show nf(x)
 
   for i = 1:n
-    x = simplexlinesearch(nf, dnf, x)
-    currentx = x
-    #sum(x.<0) == 0 || warn("encoutered negative weight $(minimum(x))")
-    #@assert sum(x.>1) == 0
-    #@assert abs(sum(x) - 1) < 1e-5
+    nx = simplexlinesearch(nf, dnf, x)
+    @show nf(nx)
+    @show find(x.<=LS_SIMPLEXMINDIST)
 
-    @show sum(x.<=LS_SIMPLEXMINDIST)
-    @show nf(x)
+    @assert nf(nx) < nf(x)
+    x = nx
+
+    i%10 == 1 && (plot(sort(x)) |> display)
+
+    @assert sum(x.<0) == 0
+    @assert sum(x.>1) == 0
+    @assert abs(sum(x) - 1) < 1e-5
+
   end
 
   x
