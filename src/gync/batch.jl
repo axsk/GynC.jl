@@ -25,8 +25,14 @@ end
 " Sample from `c::Config` and save result for all reached iterations in `iters` to `path` "
 function batch(c::Config, iters::Vector{Int}, path::AbstractString; overwrite=false)
   println("$(now()) - starting batch for $path")
-  s = Sampling(c)
-  !overwrite && isfile(path) && (s = load(path))
+  local s
+  if !overwrite && isfile(path) 
+    s = load(path)
+    c = s.config
+  else
+    s = Sampling(c)
+  end
+
   thin = c.thin
   for i in iters
     n = size(s.samples, 1) * thin
