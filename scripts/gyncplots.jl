@@ -6,30 +6,32 @@ using Plots
 
 pyplot(grid=false)
 
-#const densspecies = [8, 31, 44, 50, 76]
-const densspecies = [31]
-const denskdebw = 0.3
-const denscolor = :orangered
+densspecies = [8, 31, 44, 50, 76]
+densspecies = [31]
+denskdebw = 0.1
+denscolor = :orangered
 
-const patient = 4
-const sigma = 0.2
+patient = 4
+sigma = 0.1
 
-const trajspecies = 3
-const trajts = 0:1/4:30
-const trajclims = (0, 0.04)
-const trajalphauni = 6000
+trajspecies = 3
+trajts = 0:1/4:30
+trajclims = (0, 0.04)
+trajalphauni = 200
+alpha1 = 16
+alpha2 = 8
 
 #const ylimsdens=[(0,0.2), (0,0.2), (0,0.6), (0,1.2), (0,0.1)]
-const ylimsdens=[(0,0.2)]
-const ylimstraj=(0,500)
+ylimsdens=[(0,0.2)]
+ylimstraj=(0,500)
 
-const postcolor = :dodgerblue
-const datacolor = :dodgerblue
+postcolor = :dodgerblue
+datacolor = :dodgerblue
 
-const kdenpoints = 300
+kdenpoints = 300
 
-const mplegamma = 0.90
-const inverseweightsstd = 20
+mplegamma = 0.90
+inverseweightsstd = 20
 
 isp2 = false # special colors? (something) for plot 2
 col = 1
@@ -90,16 +92,17 @@ function plotlast()
 end
 
 function paperplot(m, muni, ws; kwargs...)
-  isp2=true
+  global isp2=true
   pi0plot = plotrow(ws["uni"], muni; kwargs...)
-
+#=
   let ys = pi0plot[1].series_list[1][:y]
     pi0plot[1].series_list[1][:y] = fill(mean(ys), length(ys))
   end
+  =#
 
   aplots = vcat(map(x->plotrow(ws[x], m; kwargs...), ["NPMLE", "DS-MLE", "MPLE"])...)
 
-  plot(pi0plot..., aplots..., size=(1200, 300*3), layout = (4, length(pi0plot)))
+  Plots.plot(pi0plot..., aplots..., size=(1200, 300*3), layout = (4, length(pi0plot)))
 end
 
 
@@ -117,11 +120,12 @@ function plotrow(ws, m)
 	     plotkde!(xs, wpost, ylims = ylimsdens[i], seriescolor=postcolor, xlims=xlims)
 	     end for (i,s) in enumerate(densspecies)]
 
-  plottrajdens(m.xs, ws[end], trajalpha = 16)
+  plottrajdens(m.xs, ws[end], trajalpha = isp2 ? trajalphauni : alpha1)
   push!(plots, plotdatas!(datas, ylims=ylimstraj, markerstrokecolor=denscolor, color=denscolor, ms=2))
-  isp2 = false
 
-  plottrajdens(m.xs, wpost, trajalpha = 8)
+  global isp2 = false
+
+  plottrajdens(m.xs, wpost, trajalpha = alpha2)
   push!(plots, plotdatas!(meas, ylims=ylimstraj, ms=3.5))
   plots
 end
@@ -133,7 +137,7 @@ end
 " plot the kde of iterations of w "
 function plotkdeiters(xs, ws; kwargs...)
   colors = (colormap("blues", length(ws)+1)[2:end])'
-  p = plot(legend=false; kwargs...)
+  p = Plots.plot(legend=false; kwargs...)
   for (w,c) in zip(ws, colors)
     c = denscolor 
     plotkde!(xs, w; seriescolor = c)
@@ -143,6 +147,7 @@ end
 
 
 function plotkde!(xs, w; kwargs...)
+  #@show typeof(xs)
   #bw = KernelDensity.default_bandwidth(xs) * denskdebwmult
   #@show bw
   k = kde(xs, weights=w, bandwidth=denskdebw, npoints=kdenpoints)
@@ -150,7 +155,7 @@ function plotkde!(xs, w; kwargs...)
 end
 
 
-function trajs(xs)
+@memoize function trajs(xs, trajts=trajts, trajspecies=trajspecies)
   hcat([GynC.forwardsol(x, trajts)[:,GynC.measuredinds[trajspecies]] for x in xs]...)
 end
 
@@ -159,7 +164,7 @@ function plottrajdens(xs::Vector, weights::Vector = uniformweights(xs);
 		      tjs = trajs(xs), trajalpha=5, kwargs...)
 
 
-  #=
+  #= old kde-slice plot
   bnd = ylimstraj == :auto ? extrema(trajs) : ylimstraj
   (l,h) = bnd
 
@@ -178,16 +183,19 @@ function plottrajdens(xs::Vector, weights::Vector = uniformweights(xs);
   #println("maximal traj density: $(maximum(dens)); 98% quantile: $(quantile(vec(dens), 0.98))")
 
   p=contour(trajts, ys, dens, clims=trajclims, fill=true, seriescolor = :heat, legend=false, kwargs...)
-
   =#
 
-  p=plot(legend=false, ylims=ylimstraj)
+  p=Plots.plot(legend=false, ylims=ylimstraj)
   @show maximum(weights)
+  #=
   for i in 1:size(tjs, 2)
     a = isp2 ? trajalphauni : trajalpha
     a = min(1., weights[i]* a)
-    plot!(p, trajts, tjs[:,i], alpha=a, color=:black)
+    Plots.plot!(p, trajts, tjs[:,i], alpha=a, color=:black)
   end
+  =#
+
+  Plots.plot!(p, trajts, tjs, alpha = min.(1., weights*trajalpha)', color=:black)
   p
 end
 
@@ -230,6 +238,7 @@ uniformweights(n::Int)     = fill(1/n, n)
 function mykde(data, evals, stdmult)
   dim = length(data[1])
   stds = [KernelDensity.default_bandwidth(map(x->x[d], data)) for d in 1:dim] * stdmult
+  @show stds[densspecies]
   map(evals) do e
     pdf(MvNormal(e, stds), hcat(data...)) |> sum
   end
