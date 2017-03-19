@@ -27,6 +27,7 @@ using Distances
 
 # fallback for other distributions
 function likelihoodmat_nanfast(xs,ys,d)
+  warn("using fallback likelihood calculation")
   pdf(d, [x-y for x in xs, y in ys])
 end
 
@@ -61,6 +62,9 @@ NaN stable, meaning that NaN entries get ignored "
 function sqeucdist_nan(A,B)
   An = isnan(A)
   Bn = isnan(B)
+
+  A=copy(A)
+  B=copy(B)
 
   A[An] = 0
   B[Bn] = 0
