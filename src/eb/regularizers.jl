@@ -31,11 +31,11 @@ function hz(wx::AbstractVector, Lzx::AbstractMatrix, wz::AbstractVector=wx)
   @assert size(Lzx, 1) == length(wz)
   @assert size(Lzx, 2) == length(wx)
   @assert all(isfinite(wx))
-  @assert all(isfinite(Lzx))
+  #@assert all(isfinite(Lzx))
   @assert all(isfinite(wz))
 
   rhoz = Lzx * wx           # \Int L(z|x) * pi(x) dx_j
-  l = 0
+  l = 0.
   for (r,w) in zip(rhoz, wz)
     r == 0 && continue
     l -= log(r)*w
@@ -57,30 +57,91 @@ function dhzcont(w, ys, zs, rho)
 end
 
 function dhzdiscr(w,ys,zs,rho)
-  L = likelihoodmat(zs,ys,rho)
+  nanencounters = 0
+
+  L = likelihoodmat(zs,ys,rho) :: Matrix{Float64}
   wz = repeatweights(w,zs)
   zmult = Int(length(wz) / length(w))
   lw = length(w)
 
   rhoz = L*w
+  rhozw = rhoz ./ wz
 
   d = zeros(w)
   for k = 1:length(w)
     for i = 1:length(zs)
-      t = L[i,k] / rhoz[i] * wz[i]
-      isnan(t) && (warn("encoutered nan in dhzdiscr (1)"); continue)
+      t = L[i,k] / rhozw[i]
+      isnan(t) && (nanencounters += 1; continue)
       d[k] -= t
-      #=if i % length(w) == k % length(w)
-        d[k] -= log(rhoz[i]) / zmult
-      end=#
     end
     for m = 0:zmult-1
       t = log(rhoz[k+lw*m]) / zmult
-      isnan(t) && (warn("encoutered nan in dhzdiscr (2)"); continue)
+      isnan(t) && (nanencounters += 1; continue)
       d[k] -= t
     end
   end
+  nanencounters > 0 && warn("skipped over $nanencounters NaN's in dhzdiscr")
   d
+end
+
+# not yet tested, will not work on different machines
+function dhzdiscr_pforsa(w,ys,zs,rho)
+  nanencounters = 0
+
+  L = likelihoodmat(zs,ys,rho) :: Matrix{Float64}
+  wz = repeatweights(w,zs)
+  zmult = Int(length(wz) / length(w))
+  lw = length(w)
+
+  rhoz = L*w
+  rhozw = rhoz ./ wz
+
+  #d = zeros(w)
+  d = SharedArray(Float64, (length(w),))
+  d[:] = 0.
+  @sync @parallel for k = 1:length(w)
+    for i = 1:length(zs)
+      t = L[i,k] / rhozw[i]
+      isnan(t) && (nanencounters += 1; continue)
+      d[k] -= t
+    end
+    for m = 0:zmult-1
+      t = log(rhoz[k+lw*m]) / zmult
+      isnan(t) && (nanencounters += 1; continue)
+      d[k] -= t
+    end
+  end
+  nanencounters > 0 && warn("skipped over $nanencounters NaN's in dhzdiscr")
+  d
+end
+
+# not yet tested
+function dhzdiscr_pmap(w,ys,zs,rho)
+  L = likelihoodmat(zs,ys,rho) :: Matrix{Float64}
+  wz = repeatweights(w,zs)
+  zmult = Int(length(wz) / length(w))
+  lw = length(w)
+
+  rhoz = L*w
+  rhozw = rhoz ./ wz
+
+  #d = zeros(w)
+  d = SharedArray(Float64, (length(w),))
+  d[:] = 0.
+  pmap(1:size(L,2), L[:,k] for k in 1:size(L,2)) do k, Lk
+    d = 0.
+    for i = 1:length(zs)
+      t = Lk[i] / rhozw[i]
+      isnan(t) && continue
+      d -= t
+    end
+    for m = 0:zmult-1
+      t = log(rhoz[k+lw*m]) / zmult
+      isnan(t) && continue
+      d -= t
+    end
+    d
+  end
 end
 
 
