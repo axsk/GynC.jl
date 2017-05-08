@@ -1,26 +1,35 @@
 using ReverseDiff
 using NLopt
 
+
+OPT_LOWERXB = 1e-12
+OPT_XTOLREL = 1e-4
+OPT_XTOLABS = 1e-4
+OPT_FTOLREL = 1e-4
+OPT_CTOLABS = 1e-4
+OPT_DEBUG   = false
+OPT_MAXEVAL = 0
+
 " optimize f over the usimplex, using the orthogonal translation projection using ReverseDiff gradients "
 function optimsimplex(f, x0; nmax=1000)
     evals = 0
     function fs(x) 
         evals += 1
         #f(x/sum(x))
-        f(x-(sum(x)-1)/length(x))
+        f(x-(sum(x)-1)/length(x)) # wrong, since it allows for negative components
     end
     dfs! = ReverseDiff.compile_gradient(fs, x0)
 
     opt = Opt(:LD_MMA, length(x0))
 
-    lower_bounds!(opt, 0.)
+    lower_bounds!(opt, OPT_LOWERXB)
     upper_bounds!(opt, 1.)
 
     min_objective!(opt, (x,g) -> (dfs!(g, x); fs(x)))
 
     maxeval!(opt, nmax)
-    xtol_rel!(opt, 1e-6)
-    xtol_abs!(opt, 1e-9)
+    xtol_rel!(opt, OPT_XTOLREL)
+    xtol_abs!(opt, OPT_XTOLABS)
 
     @time minf, minx, ret = optimize(opt, x0)
     @show evals
@@ -31,7 +40,9 @@ function optimsimplex(f, x0; nmax=1000)
     minx / sum(minx)
 end
 
-" optimize the models objective using dmple_obj for derivatives, with simplex inequality constraints "
+
+
+" optimize the models objective using dmple_obj for derivatives, with simplex inequality constraints via augmented lagrangian"
 function optimmple(m, reg, w0; optimizer=:LD_MMA, maxeval=20)
 
     n = length(w0)
@@ -43,11 +54,11 @@ function optimmple(m, reg, w0; optimizer=:LD_MMA, maxeval=20)
 
 
     function myf(x,g)
-        @printf("f: sum(x)=%f f(x)=%f outliers=%d \n", sum(x), -f(x), sum(x.<0) + sum(x.>1))
+        OPT_DEBUG && @printf("f: sum(x)=%f f(x)=%f outliers=%d \n", sum(x), -f(x), sum(x.<0) + sum(x.>1))
         if length(g) == n
             g[:] = -df(x) # - because of minimization
         else
-            warn("grad length $(length(g))")
+            OPT_DEBUG && print("grad length $(length(g))")
         end
         -f(x)
     end
@@ -71,10 +82,10 @@ function optimmple(m, reg, w0; optimizer=:LD_MMA, maxeval=20)
     opt2 = Opt(optimizer,  n)
     
 
-    lower_bounds!(opt, 1e-12)
+    lower_bounds!(opt, OPT_LOWERXB)
     upper_bounds!(opt, 1)
 
-    equality_constraint!(opt, eqconst, 1e-4)
+    equality_constraint!(opt, eqconst, OPT_CTOLABS)
 
 
     min_objective!(opt, myf)
@@ -83,27 +94,27 @@ function optimmple(m, reg, w0; optimizer=:LD_MMA, maxeval=20)
     #maxeval!(opt, 100)
     #maxeval!(opt2, 10)
 
-    #ftol_abs!(opt, 1)
-    #ftol_rel!(opt, 1e-6)
-    #ftol_rel!(opt, 1e-6)
     #ftol_abs!(opt2, 1)
+    #ftol_abs!(opt, 1)
+    ftol_rel!(opt, OPT_FTOLREL)
+    ftol_rel!(opt2, OPT_FTOLREL)
 
     maxeval!(opt2, maxeval)
-    xtol_rel!(opt, 1e-3)
-    xtol_rel!(opt2, 1e-3)
-    xtol_abs!(opt, 1e-3 / n)
-    xtol_abs!(opt2, 1e-3 / n)
+    xtol_rel!(opt, OPT_XTOLREL)
+    xtol_rel!(opt2, OPT_XTOLREL)
+    xtol_abs!(opt, OPT_XTOLABS)
+    xtol_abs!(opt2, OPT_XTOLABS)
 
     local_optimizer!(opt, opt2)
 
-    @show minf, minx, ret = optimize(opt, w0)
+    minf, minx, ret = optimize(opt, w0)
 
     @assert minx != w0
 
     minx
 end
 
-" optimize the models objective using dmple_obj for derivatives, with simplex inequality constraints "
+" optimize the models objective using dmple_obj for derivatives, with simplex inequality constraints built built into target function"
 function optimmple2(m, reg, w0, penaltyconst; optimizer=:LD_MMA)
 
     n = length(w0)
@@ -115,7 +126,7 @@ function optimmple2(m, reg, w0, penaltyconst; optimizer=:LD_MMA)
 
 
     function myf(x,g)
-        @printf("f: sum(x)=%f f(x)=%f outliers=%d \n", sum(x), -f(x), sum(x.<0) + sum(x.>1))
+        OPT_DEBUG && @printf("f: sum(x)=%f f(x)=%f outliers=%d \n", sum(x), -f(x), sum(x.<0) + sum(x.>1))
 
         dsum = sum(x) - 1
 
@@ -129,15 +140,15 @@ function optimmple2(m, reg, w0, penaltyconst; optimizer=:LD_MMA)
     opt = Opt(optimizer,  n)
     
 
-    lower_bounds!(opt, 1e-12)
+    lower_bounds!(opt, OPT_LOWERXB)
     upper_bounds!(opt, 1)
 
 
 
     min_objective!(opt, myf)
 
-    xtol_rel!(opt, 1e-3)
-    xtol_abs!(opt, 1e-3 / n)
+    xtol_rel!(opt, OPT_XTOLREL)
+    xtol_abs!(opt, OPT_XTOLABS)
 
 
     @show minf, minx, ret = optimize(opt, w0)
@@ -146,6 +157,8 @@ function optimmple2(m, reg, w0, penaltyconst; optimizer=:LD_MMA)
 
     minx
 end
+
+" optimize the models objective using dmple_obj for derivatives, with simplex inequality constraints as solver constraints"
 function optimmple3(m, reg, w0; optimizer=:LD_MMA)
 
     n = length(w0)
@@ -157,7 +170,7 @@ function optimmple3(m, reg, w0; optimizer=:LD_MMA)
 
 
     function myf(x,g)
-        @printf("f: sum(x)=%f f(x)=%f outliers=%d \n", sum(x), -f(x), sum(x.<0) + sum(x.>1))
+        OPT_DEBUG && @printf("f: sum(x)=%f f(x)=%f outliers=%d \n", sum(x), -f(x), sum(x.<0) + sum(x.>1))
         if length(g) == n
             g[:] = -df(x) 
         end
@@ -165,27 +178,37 @@ function optimmple3(m, reg, w0; optimizer=:LD_MMA)
     end
 
     function myineq(x,g)
-        dsum = sum(x) - 1
         if length(g) == n
             g[:] = 1
         end
-        dsum
+        sum(x) - 1. - OPT_CTOLABS/2
+    end
+
+    function myineq2(x,g)
+        if length(g) == n
+            g[:] = -1
+        end
+        1. - sum(x) - OPT_CTOLABS/2 
     end
 
     opt = Opt(optimizer,  n)
 
-    lower_bounds!(opt, 1e-12)
+    lower_bounds!(opt, OPT_LOWERXB)
     upper_bounds!(opt, 1)
 
-    inequality_constraint!(opt, myineq)
+    inequality_constraint!(opt, myineq, OPT_CTOLABS/2)
+    inequality_constraint!(opt, myineq2, OPT_CTOLABS/2)
 
     min_objective!(opt, myf)
 
-    xtol_rel!(opt, 1e-3)
-    xtol_abs!(opt, 1e-3 / n)
+    xtol_rel!(opt, OPT_XTOLREL)
+    xtol_abs!(opt, OPT_XTOLABS)
+
+    ftol_rel!(opt, OPT_FTOLREL)
+    maxeval!(opt, OPT_MAXEVAL)
 
 
-    @show minf, minx, ret = optimize(opt, w0)
+    minf, minx, ret = optimize(opt, w0)
 
     @assert minx != w0
 
