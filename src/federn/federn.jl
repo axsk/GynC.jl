@@ -57,6 +57,7 @@ end
 
 function federmodel(nx, ndata, zmult, rho_std; kwargs...)
   xs, ys, datas, zs = federexperiment(nx=nx, ndata=ndata, zmult=zmult, rho_std=rho_std; kwargs...)
+  warn("check if MvNormal(2,...) is what you want")
   LikelihoodModel(xs, ys, zs, datas, MvNormal(2, rho_std))
 end
 

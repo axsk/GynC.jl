@@ -3,8 +3,8 @@ using ODE: ode45
 
 @deprecate odeohnetreatment(k) odesol(k)
 
-function odesol(k::Real, ts::AbstractVector = [1,1.7])
-    m = 0.7
+function odesol(k::Real, ts::AbstractVector = [1,1.7]; m = 70)
+    #@show m
     f(t,z)   = [z[2], -k/m*z[1]]
     y0       = [-10, 0.]
     tspan    = vcat(0, ts)
@@ -13,8 +13,7 @@ function odesol(k::Real, ts::AbstractVector = [1,1.7])
     [z[t][1] for t=2:length(z)]
 end
 
-function odemittreatment(k::Real)
-    m = 0.7
+function odemittreatment(k::Real; m = 70)
 
     s = 0.02
     g(t,c) = 400*exp(-(t-c).^2/s^2)

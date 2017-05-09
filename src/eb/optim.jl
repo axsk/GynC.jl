@@ -77,7 +77,9 @@ function optimauglag(m, reg, w0; optimizer=:LD_MMA, maxeval=20)
 
     minf, minx, ret = optimize(opt, w0)
 
-    @assert minx != w0
+    if minx == w0
+        warn("Optimizer returned initial proposal")
+    end
 
     minx
 end
@@ -135,7 +137,9 @@ function optimineq(m, reg, w0; optimizer=:LD_MMA)
 
     minf, minx, ret = optimize(opt, w0)
 
-    @assert minx != w0
+    if minx == w0
+        warn("Optimizer returned initial proposal")
+    end
 
     minx
 end

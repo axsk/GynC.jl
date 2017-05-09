@@ -73,12 +73,13 @@ function smoothedmodel(m, mult)
 end
 
 
-function smoothedmodel(m, mult, measerr::Normal)
+function smoothedmodel(m, mult, _::Normal)
   sigma = KernelDensity.default_bandwidth(m.datas)
+  kernel = Normal(0, sigma)
 
   datas = repmat(m.datas, mult)
   for i in eachindex(datas)
-    datas[i] += rand(Normal(sigma))
+    datas[i] += rand(kernel)
   end
   
   measerr = Normal(0, sqrt(m.measerr.σ^2 + sigma^2))
@@ -88,7 +89,7 @@ end
 
 " constructs the DSMLE model by inflating the data by factor mult.
 adjusts the measurementerror for compensation"
-function smoothedmodel{T}(m, mult, measerr::GynC.MatrixNormalCentered{T})
+function smoothedmodel{T}(m, mult, _::GynC.MatrixNormalCentered{T})
   sigmas = defaultdatabandwith(m)
   kernel = GynC.MatrixNormalCentered(sigmas)
 
