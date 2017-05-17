@@ -60,8 +60,8 @@ dlogl(m::LikelihoodModel, w) = dlogl(w, m.datas, m.ys, m.measerr) # correct orde
 
 function syntheticmodel(xs::Vector, phi::Function, prior::Distribution, ndata::Int, zmult::Int, measerr::Distribution)
   ys = phi.(xs)
-  zs = repmat(ys, zmult) + rand(measerr, length(ys)*zmult)
   datas = phi.(rand(prior, ndata)) + rand(measerr, ndata)
+  zs = repmat(ys, zmult) + rand(measerr, length(ys)*zmult)
   LikelihoodModel(xs, ys, zs, datas, measerr)
 end
 
@@ -73,8 +73,7 @@ function smoothedmodel(m, mult)
 end
 
 
-function smoothedmodel(m, mult, _::Normal)
-  sigma = KernelDensity.default_bandwidth(m.datas)
+function smoothedmodel(m, mult, _::Normal; sigma=KernelDensity.default_bandwidth(m.datas))
   kernel = Normal(0, sigma)
 
   datas = repmat(m.datas, mult)
