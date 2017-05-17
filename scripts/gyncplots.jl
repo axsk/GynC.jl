@@ -4,7 +4,10 @@ using JLD
 using KernelDensity
 using Plots
 
+datas = GynC.alldatas()
 pyplot(grid=false)
+
+pi0uniformhack = true
 
 densspecies = [8, 31, 44, 50, 76]
 densspecies = [31]
@@ -94,11 +97,12 @@ end
 function paperplot(m, muni, ws; kwargs...)
   global isp2=true
   pi0plot = plotrow(ws["uni"], muni; kwargs...)
-#=
-  let ys = pi0plot[1].series_list[1][:y]
-    pi0plot[1].series_list[1][:y] = fill(mean(ys), length(ys))
+
+  if pi0uniformhack 
+    let ys = pi0plot[1].series_list[1][:y]
+      pi0plot[1].series_list[1][:y] = fill(mean(ys), length(ys))
+    end
   end
-  =#
 
   aplots = vcat(map(x->plotrow(ws[x], m; kwargs...), ["NPMLE", "DS-MLE", "MPLE"])...)
 
@@ -156,47 +160,14 @@ end
 
 
 @memoize function trajs(xs, trajts=trajts, trajspecies=trajspecies)
-  hcat([GynC.forwardsol(x, trajts)[:,GynC.measuredinds[trajspecies]] for x in xs]...)
+  hcat([GynC.forwardsol(x, trajts)[:,GynC.measuredinds[trajspecies]] for x in xs]...)::Array{Float64,2}
 end
 
 " plot the kde of the trajectories "
-function plottrajdens(xs::Vector, weights::Vector = uniformweights(xs);
-		      tjs = trajs(xs), trajalpha=5, kwargs...)
+function plottrajdens{T}(xs, weights::Vector{T} = uniformweights(xs);
+			 tjs::Array{T,2} = trajs(xs), trajalpha=5, kwargs...)
 
-
-  #= old kde-slice plot
-  bnd = ylimstraj == :auto ? extrema(trajs) : ylimstraj
-  (l,h) = bnd
-
-  bndaugmentation = 0.05
-  bndaug = (l-(h-l)*bndaugmentation, h+(h-l)*bndaugmentation)
-
-  kdes = [KernelDensity.kde(filter(x->!isnan(x),trajs[t,:]), boundary = bndaug, weights=weights, npoints = round(Int, kdenpoints*(1+2*bndaugmentation)), bandwidth=10) for t in 1:size(trajs, 1)]
-
-  inds = find(x->(x>=l&&x<=h), kdes[1].x)
-
-  ys = kdes[1].x[inds]
-  dens = hcat([k.density[inds] for k in kdes]...)
-
-  #clims = (0, quantile(vec(dens), cquant))
-  #clims = (0, maximum(dens) * cquant)
-  #println("maximal traj density: $(maximum(dens)); 98% quantile: $(quantile(vec(dens), 0.98))")
-
-  p=contour(trajts, ys, dens, clims=trajclims, fill=true, seriescolor = :heat, legend=false, kwargs...)
-  =#
-
-  p=Plots.plot(legend=false, ylims=ylimstraj)
-  @show maximum(weights)
-  #=
-  for i in 1:size(tjs, 2)
-    a = isp2 ? trajalphauni : trajalpha
-    a = min(1., weights[i]* a)
-    Plots.plot!(p, trajts, tjs[:,i], alpha=a, color=:black)
-  end
-  =#
-
-  Plots.plot!(p, trajts, tjs, alpha = min.(1., weights*trajalpha)', color=:black)
-  p
+  Plots.plot(trajts, tjs, alpha=min.(1., weights*trajalpha)', color=:black, legend=false, ylims=ylimstraj)
 end
 
 " plot the given data "
@@ -243,5 +214,3 @@ function mykde(data, evals, stdmult)
     pdf(MvNormal(e, stds), hcat(data...)) |> sum
   end
 end
-
-global datas = GynC.alldatas();
