@@ -37,19 +37,19 @@ function likelihoodmat_nanfast(xs,ys,d::MatrixNormalCentered; renormalize=true)
   sqeucdists = sqeucdist_nan(A,B)
 
   # construct gaussian normalization factor dependent on the count of measurements 
-  svec = vec(d.sigmas)
-  normalization = similar(sqeucdists)
-  Amask = !isnan(A)
-  Bmask = !isnan(B)
-
-  for j = 1:size(B,2)
-    for i = 1:size(A,2)
-      ijmask = Amask[:,i] .* Bmask[:,j]
-      normalization[i,j] = prod(svec[ijmask]) * sqrt(2*pi)^sum(ijmask)
-    end
-  end
-
+  normalization = ones(sqeucdists)
   if renormalize
+    Amask = !isnan(A)
+    Bmask = !isnan(B)
+    svec = vec(d.sigmas)
+
+    for j = 1:size(B,2)
+      for i = 1:size(A,2)
+        ijmask = Amask[:,i] .* Bmask[:,j]
+        normalization[i,j] = sqrt( prod(svec[ijmask]) * (2*pi)^sum(ijmask) )
+      end
+    end
+
     sqeucdists = sqeucdists - minimum(sqeucdists)
     normalization = normalization / maximum(normalization)
   end
