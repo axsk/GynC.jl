@@ -57,30 +57,24 @@ function dhzcont(w, ys, zs, rho)
 end
 
 function dhzdiscr(w,ys,zs,rho)
-  nanencounters = 0
-
   L = likelihoodmat(zs,ys,rho) :: Matrix{Float64}
   wz = repeatweights(w,zs)
   zmult = Int(length(wz) / length(w))
   lw = length(w)
 
   rhoz = L*w
-  rhozw = rhoz ./ wz
+  factors = wz ./ rhoz
 
   d = zeros(w)
-  for k = 1:length(w)
-    for i = 1:length(zs)
-      t = L[i,k] / rhozw[i]
-      isnan(t) && (nanencounters += 1; continue)
-      d[k] -= t
+  @Threads.threads for k = 1:length(w)
+    @simd for i = 1:length(zs)
+      @inbounds d[k] -= L[i,k] * factors[i]
     end
-    for m = 0:zmult-1
-      t = log(rhoz[k+lw*m]) / zmult
-      isnan(t) && (nanencounters += 1; continue)
-      d[k] -= t
+    @simd for m = 0:zmult-1
+      @inbounds d[k] -= log(rhoz[k+lw*m]) / zmult
     end
   end
-  nanencounters > 0 && warn("skipped over $nanencounters NaN's in dhzdiscr")
+  any(isnan, d) && error("encountered NaN in dhz")
   d
 end
 
