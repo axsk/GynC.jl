@@ -147,7 +147,6 @@ function simplexlinesearch(f,df,x, alpha0 = 1)
 end
 
 
-uniformweights(n) = fill(1/n, n)
 randomweights(n)  = normalize!(rand(n), 1)
 
 global currentx

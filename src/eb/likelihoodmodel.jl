@@ -19,6 +19,11 @@ function em(m::LikelihoodModel, w0, niter)
   emiterations(w0, L, niter)
 end
 
+uniformweights(m::LikelihoodModel) = uniformweights(m.xs)
+uniformweights(xs::Vector) = uniformweights(length(xs))
+uniformweights(n::Int) = fill(1/n, n)
+
+
 function mple(m::LikelihoodModel, w0, niter, reg, h)
   c1 = 1/100
   c2 = 1/1000

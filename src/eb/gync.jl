@@ -57,6 +57,7 @@ function samplepi0(nsamples, trajts=0:30)
   xs = Vector{Float64}[]
   while length(xs) < nsamples
     x = vcat(GynC.refparms.* rand(82) * 5, rand(yprior), 30)
+    # fix 30 as cycle period, has influence merely on the fit function, not on traj. itself
     !any(isnan(GynC.forwardsol(x, trajts))) && push!(xs, x)
   end
   xs

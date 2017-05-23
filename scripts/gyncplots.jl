@@ -23,6 +23,7 @@ trajclims = (0, 0.04)
 trajalphauni = 200
 alpha1 = 16
 alpha2 = 8
+alphalim = 0.01
 
 #const ylimsdens=[(0,0.2), (0,0.2), (0,0.6), (0,1.2), (0,0.1)]
 ylimsdens=[(0,0.2)]
@@ -167,7 +168,9 @@ end
 function plottrajdens{T}(xs, weights::Vector{T} = uniformweights(xs);
 			 tjs::Array{T,2} = trajs(xs), trajalpha=5, kwargs...)
 
-  Plots.plot(trajts, tjs, alpha=min.(1., weights*trajalpha)', color=:black, legend=false, ylims=ylimstraj)
+  as = min.(1., weights*trajalpha)
+  i  = as .> alphalim
+  Plots.plot(trajts, tjs[:,i], alpha=as[i]', color=:black, legend=false, ylims=ylimstraj)
 end
 
 " plot the given data "

@@ -3,31 +3,20 @@ module Federn
 using Distributions
 include("odes.jl")
 
-phi = odesol
+phi(x) = odesol(x, [1, 1.7] * sqrt(6/.7), m=6)
 
 const prior = MixtureModel([Normal(15, 15*.15), Normal(30, 30*.15)])
 
-p_measerror(rho_std) = MvNormal(2, rho_std)
-perturb(y, rho_std) = y + rand(p_measerror(rho_std))
+function perturb(y::Vector, rho) 
+  err = MvNormal(length(y), rho)
+  y + rand(err)
+end
 
-#=function generatepriordata(n, rho_std)
-    k1 = 15
-    k2 = 30
-    s1 = 0.15*k1
-    s2 = 0.15*k2
-    n1 = floor(Int, n/2)
-    x1 = k1 + s1*randn(n1)
-    x2 = k2 + s2*randn(n-n1)
-
-    xs = [x1; x2]
-    zs = perturb.(phi.(xs), rho_std)
-end=#
 
 function generatepriordata(n, rho_std)
     xs = rand(prior, n)
     zs = map(x->perturb(phi(x), rho_std), xs)
 end
-
 
 function federexperiment(;
                          nx = 300, # number of samples in parameter space
@@ -61,8 +50,20 @@ function federmodel(nx, ndata, zmult, rho_std; kwargs...)
   LikelihoodModel(xs, ys, zs, datas, MvNormal(2, rho_std))
 end
 
-function betaprior(m::LikelihoodModel)
-    wbeta(m.xs, maximum(m.xs)*1.000001) # to circumvent 0 weight destroying gradientascent boundary detection
+function federmodel(;nx=100, ts=[1, 1.7] * sqrt(6/.7), ndata=0, zmult=20, rho=1, xmin=1, xmax=110, m=6)
+
+  err = MvNormal(length(ts), rho)
+  perturb(x) = x+rand(err)
+  phi(x) = odesol(x, ts, m=m)
+
+  xs = linspace(xmin, xmax, nx) |> collect
+  ys = phi.(xs)
+  zs = perturb.(repmat(ys, zmult))
+  datas = perturb.(phi.(rand(prior, ndata)))
+
+  LikelihoodModel(xs, ys, zs, datas, err)
 end
+
+betaprior(m::LikelihoodModel) = wbeta(m.xs, maximum(m.xs)*1.000001) # to circumvent 0 weight destroying gradientascent boundary detection
 
 end

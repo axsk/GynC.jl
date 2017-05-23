@@ -13,7 +13,7 @@ function odesol(k::Real, ts::AbstractVector = [1,1.7]; m = 70)
     [z[t][1] for t=2:length(z)]
 end
 
-function odemittreatment(k::Real; m = 70)
+function odemittreatment(k::Real; m = 70, tspan = linspace(0,100,400))
 
     s = 0.02
     g(t,c) = 400*exp(-(t-c).^2/s^2)
@@ -24,20 +24,18 @@ function odemittreatment(k::Real; m = 70)
     c4 = 4.95;
     c5 = 6.95;
     c6 = 7.75;
-    treat(t) = g(t,c1) + g(t,c2) + g(t,c3) + g(t,c4) + g(t,c5) + g(t,c6);
+    treat(t) = (g(t,c1) + g(t,c2) + g(t,c3) + g(t,c4) + g(t,c5) + g(t,c6))
 
-    f(t,z) = [z[2], -k/m*z[1] + treat(t)]
+    f(t,z) = [z[2], -k/m*z[1] + treat(t/3)/(6/.7)]
 
     y0 = [-10,0.]
-    tspan = linspace(0,10,400)
 
-    t,y = ode45(f, y0, tspan, points=:specified)
+    t,ys = ode45(f, y0, tspan, points=:specified)
+    [y[1] for y in ys]
 end
 
 function maxtreatamplitude(k)
-    t,y = odemittreatment(k)
-    ys = [y[1] for y in y]
-    maxabs(ys)
+    maxabs(odemittreatment(k))
 end
 
 r(k::Real) = maxtreatamplitude(k) > 13 ? 1 : 0

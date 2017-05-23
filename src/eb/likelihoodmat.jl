@@ -28,7 +28,7 @@ using Distances
 # fallback for other distributions
 function likelihoodmat_nanfast(xs,ys,d)
   warn("using fallback likelihood calculation")
-  pdf(d, [x-y for x in xs, y in ys])
+  map(a->pdf(d, a), (x-y for x in xs, y in ys))
 end
 
 function likelihoodmat_nanfast(xs,ys,d::MatrixNormalCentered; renormalize=true)
