@@ -23,13 +23,24 @@ uniformweights(m::LikelihoodModel) = uniformweights(m.xs)
 uniformweights(xs::Vector) = uniformweights(length(xs))
 uniformweights(n::Int) = fill(1/n, n)
 
+function mple(m::LikelihoodModel, reg; w0 = uniformweights(m), method = :ineq, optimizer = :LD_MMA)
+  if method == :ineq
+    optimineq(m, reg, w0; optimizer=optimizer)
+  elseif method == :auglag
+    optimauglag(m, reg, w0; optimizer=optimizer)
+  end
+end
 
-function mple(m::LikelihoodModel, w0, niter, reg, h)
-  c1 = 1/100
-  c2 = 1/1000
-  ndata = length(m.datas)
-  hauto = h/((1-reg)*(ndata/c1) + reg/c2)
-  gradientascent(dmple_obj(m, reg), w0, niter, hauto, autodiff=false)
+
+# note: rotated arguments, check in all occurences!
+function mple(m::LikelihoodModel, reg, h, niter; autoh = true, w0 = uniformweights(m))
+  if autoh
+    c1 = 1/100
+    c2 = 1/1000
+    ndata = length(m.datas)
+    h = h/((1-reg)*(ndata/c1) + reg/c2)
+  end
+  gradientascent(dmple_obj(m, reg), w0, niter, h, autodiff=false)
 end
 
 
