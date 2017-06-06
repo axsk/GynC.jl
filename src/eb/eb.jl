@@ -2,12 +2,11 @@
 using Memoize
 using Iterators
 using ForwardDiff
-using ReverseDiff
 using NLopt
 
 export emiteration!, euler_A!, euler_phih!
 export gradientascent
-export Hz, logLw, HKL
+export hz, logl
 
 include("projectsimplex.jl")
 include("weightedsampling.jl")

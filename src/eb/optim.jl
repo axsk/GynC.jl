@@ -1,4 +1,3 @@
-using ReverseDiff
 using NLopt
 
 

@@ -19,8 +19,8 @@ xs, ys, datas, zs = Federn.federexperiment(nx=N, ndata=N)
 w = Federn.wbeta(xs, 110)
 
 
-Hz(w, ys, zs, 5)
-logLw(w, ys, datas, 5)
+hz(w, ys, zs, 5)
+logl(w, ys, datas, 5)
 
-gradientascent(w->GynC.Hz(w,ys,zs,0.1), w, 1, 0.1)
+gradientascent(w->GynC.hz(w,ys,zs,0.1), w, 1, 0.1)
 
